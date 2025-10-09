@@ -378,13 +378,8 @@ final class FairCoreTests: XCTestCase {
         XCTAssertEqual("2001-01-01T00:00:00Z", Date(timeIntervalSinceReferenceDate: 0).ISO8601Format())
         XCTAssertEqual("4001-01-01T00:00:00Z", Date.distantFuture.ISO8601Format())
 
-        #if os(Linux)
-        XCTAssertEqual(-62135769600.0, Date.distantPast.timeIntervalSince1970)
-        XCTAssertEqual("0001-12-30T00:00:00Z", Date.distantPast.ISO8601Format()) // formatting bug?
-        #else
         XCTAssertEqual(-62135769600.0, Date.distantPast.timeIntervalSince1970)
         XCTAssertEqual("0001-01-01T00:00:00Z", Date.distantPast.ISO8601Format())
-        #endif
     }
 
     #if !os(Linux) && !os(Android) && !os(Windows)
