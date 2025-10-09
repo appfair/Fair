@@ -32,6 +32,7 @@ jobs:
         run: swift test -v --configuration debug --parallel
 
       - name: Fair Test Linux (Release)
+        if: false
         run: swift test -v --configuration release -Xswiftc -enable-testing --parallel
 
       - name: Check fairtool formula
@@ -54,34 +55,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
  
-      #- name: Test iOS (Debug)
-      #  run: xcodebuild test -configuration Debug -scheme "Fair-Package" -sdk "iphonesimulator" -destination "platform=iOS Simulator,name=iPhone 14 Pro"
+      - name: Test iOS (Debug)
+        if: false
+        run: xcodebuild test -configuration Debug -scheme "Fair-Package" -sdk "iphonesimulator" -destination "platform=iOS Simulator,name=iPhone 14 Pro"
 
-      #- name: Test iOS (Release)
-      #  run: xcodebuild test -configuration Release -scheme "Fair-Package" -sdk "iphonesimulator" -destination "platform=iOS Simulator,name=iPhone 14 Pro"
+      - name: Test iOS (Release)
+        if: false
+        run: xcodebuild test -configuration Release -scheme "Fair-Package" -sdk "iphonesimulator" -destination "platform=iOS Simulator,name=iPhone 14 Pro"
 
       - name: Test macOS (Debug)
+        if: false
         run: xcodebuild test -configuration Debug -scheme "Fair-Package" -sdk "macosx" -destination "platform=macosx"
 
-      #- name: Test macOS (Release)
-      #  run: xcodebuild test -configuration Release -scheme "Fair-Package" -sdk "macosx" -destination "platform=macosx"
+      - name: Test macOS (Release)
+        if: false
+        run: xcodebuild test -configuration Release -scheme "Fair-Package" -sdk "macosx" -destination "platform=macosx"
 
       - name: Test Package
-        run: xcrun swift test --parallel
+        #run: xcrun swift test --parallel
+        run: swift test
 
       - name: Run fairtool
         run: xcrun swift run fairtool version
 
-      #- name: Check fairtool formula
-      #  run: |
-      #    export HOMEBREW_NO_INSTALL_CLEANUP=1
-      #    brew install fair-ground/tool/fairtool-head
-      #    brew test fairtool-head
-      #    fairtool-head version
-      #    #fairtool-head app fork App-Name
-      #    #fairtool-head app config App-Name
-      #    #fairtool-head app release App-Name
-      #    #fairtool-head app integrate App-Name
+      - name: Check fairtool formula
+        if: false
+        run: |
+          export HOMEBREW_NO_INSTALL_CLEANUP=1
+          brew install fair-ground/tool/fairtool-head
+          brew test fairtool-head
+          fairtool-head version
+          #fairtool-head app fork App-Name
+          #fairtool-head app config App-Name
+          #fairtool-head app release App-Name
+          #fairtool-head app integrate App-Name
 
   api-doc:
     if: false

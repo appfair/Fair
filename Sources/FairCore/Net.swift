@@ -131,7 +131,6 @@ extension URLRequest {
 }
 
 public extension URLRequest {
-    #if swift(>=5.5)
     /// Downloads the URL and verifies the HTTP success code and, optionally, the validity of the
     /// SHA-256 hash included as the URL's fragment.
     ///
@@ -154,7 +153,6 @@ public extension URLRequest {
 
         return data
     }
-    #endif
 }
 
 extension URLResponse {
@@ -398,7 +396,6 @@ extension URLRequest {
     }
 }
 
-#if swift(>=5.5)
 extension URLSession {
     /// Issues a `HEAD` request for the given URL and returns the response
     public func fetchHEAD(url: URL, cachePolicy: URLRequest.CachePolicy) async throws -> URLResponse? {
@@ -567,4 +564,3 @@ extension URLSession {
         }
     }
 }
-#endif // swift(>=5.5)

@@ -258,6 +258,9 @@ let systemStdout = CRT.stdout
 #elseif canImport(Glibc)
 let systemStderr = Glibc.stderr!
 let systemStdout = Glibc.stdout!
+#elseif canImport(Musl)
+let systemStderr = Musl.stderr!
+let systemStdout = Musl.stdout!
 #elseif canImport(WASILibc)
 let systemStderr = WASILibc.stderr!
 let systemStdout = WASILibc.stdout!
@@ -503,12 +506,10 @@ public extension StringProtocol {
 
 #if os(macOS) || os(iOS)
 extension String {
-    #if swift(>=5.5)
     /// Parses the attributed text string into an `AttributedString`
     @inlinable public func atx(interpret: AttributedString.MarkdownParsingOptions.InterpretedSyntax = .inlineOnlyPreservingWhitespace, allowsExtendedAttributes: Bool = true, languageCode: String? = nil) throws -> AttributedString {
         try AttributedString(markdown: self, options: .init(allowsExtendedAttributes: allowsExtendedAttributes, interpretedSyntax: interpret, failurePolicy: .returnPartiallyParsedIfPossible, languageCode: languageCode))
     }
-    #endif
 }
 #endif
 

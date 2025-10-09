@@ -555,6 +555,8 @@ extension Result: _ErrorMechanism { }
 import Darwin
 #elseif canImport(Glibc)
 import Glibc
+#elseif canImport(Musl)
+import Musl
 #elseif canImport(CRT)
 import CRT
 #endif
@@ -568,6 +570,8 @@ final actor IOActor {
             let read = Darwin.read
 #elseif canImport(Glibc)
             let read = Glibc.read
+#elseif canImport(Musl)
+            let read = Musl.read
 #elseif canImport(CRT)
             let read = CRT._read
 #endif

@@ -8,8 +8,12 @@ import Glibc
 import var Glibc.S_IFREG
 import var Glibc.S_IFDIR
 import var Glibc.S_IFLNK
+#elseif canImport(Musl)
+import Musl
+import var Musl.S_IFREG
+import var Musl.S_IFDIR
+import var Musl.S_IFLNK
 #endif
-
 import CZLib
 #if canImport(zlib)
 import zlib

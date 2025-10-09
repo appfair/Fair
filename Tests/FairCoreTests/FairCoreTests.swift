@@ -266,13 +266,13 @@ final class FairCoreTests: XCTestCase {
 
         try await readURLAsync(url: URL(string: "https://www.example.org")!, expectRedirect: 0)
 
-        try await readURLAsync(url: URL(string: "https://github.com/fair-ground/Fair")!, expectRedirect: 0)
-        try await readURLAsync(url: URL(string: "https://github.com/fair-ground/Fair.git")!, expectRedirect: 1)
+        try await readURLAsync(url: URL(string: "https://github.com/appfair/Fair")!, expectRedirect: 0)
+        try await readURLAsync(url: URL(string: "https://github.com/appfair/Fair.git")!, expectRedirect: 1)
 
         // two separate redirects: www.github.com -> github.com and Fair.git to Fair/
-        try await readURLAsync(url: URL(string: "https://www.github.com/fair-ground/Fair.git")!, expectRedirect: 2, expectChallenge: 2)
+        try await readURLAsync(url: URL(string: "https://www.github.com/appfair/Fair.git")!, expectRedirect: 2, expectChallenge: 2)
 
-        try await readURLAsync(url: URL(string: "https://github.com/fair-ground/UNKNOWN_REPO")!, expectRedirect: 0, expectChallenge: 1) // unknown repositories response with a challenge
+        try await readURLAsync(url: URL(string: "https://github.com/appfair/UNKNOWN_REPO")!, expectRedirect: 0, expectChallenge: 1) // unknown repositories response with a challenge
     }
     
     func readURLAsync(url: URL, expectRedirect: Int? = nil, expectChallenge: Int? = nil) async throws {

@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 import FairCore
 
 /// A service that converts actions and parameters into an endpoint URL
@@ -65,11 +68,10 @@ public extension EndpointService {
 }
 
 extension EndpointService {
-#if swift(>=5.5)
         /// Issue a request while waiting for the expected request
         /// Note: currently unused
         public func requestAsyncWithRateLimit<A: APIRequest>(_ request: A, cache: URLRequest.CachePolicy? = nil, retry: Bool = true) async throws -> A.Response where A.Service == Self {
-        let (data, response) = try await session.data(for: buildRequest(for: request, cache: cache), delegate: nil)
+        let (data, response) = try await session.data(for: buildRequest(for: request, cache: cache))
 
         // check response headers for rate-limiting
         if let response = response as? HTTPURLResponse {
@@ -92,7 +94,6 @@ extension EndpointService {
         }
         return try decode(data: data)
     }
-#endif
 }
 
 extension EndpointService {
