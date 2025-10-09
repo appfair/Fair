@@ -1,38 +1,6 @@
-/**
- Copyright (c) 2022 Marc Prud'hommeaux
-
- This program is free software: you can redistribute it and/or modify
- it under the terms of the GNU Affero General Public License as
- published by the Free Software Foundation, either version 3 of the
- License, or (at your option) any later version.
-
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU Affero General Public License for more details.
-
- The full text of the GNU Affero General Public License can be
- found in the COPYING.txt file or at https://www.gnu.org/licenses/
-
- Linking this library statically or dynamically with other modules is
- making a combined work based on this library.  Thus, the terms and
- conditions of the GNU Affero General Public License cover the whole
- combination.
-
- As a special exception, the copyright holders of this library give you
- permission to link this library with independent modules to produce an
- executable, regardless of the license terms of these independent
- modules, and to copy and distribute the resulting executable under
- terms of your choice, provided that you also meet, for each linked
- independent module, the terms and conditions of the license of that
- module.  An independent module is a module which is not derived from
- or based on this library.  If you modify this library, you may extend
- this exception to your version of the library, but you are not
- obligated to do so.  If you do not wish to do so, delete this
- exception statement from your version.
- */
+import Foundation
+import FairCore
 import FairExpo
-import FairApp
 import ArgumentParser
 #if canImport(CoreFoundation)
 import CoreFoundation
@@ -53,7 +21,6 @@ public struct FairToolCommand : AsyncParsableCommand {
                                                             FairCommand.self,
                                                             ArtifactCommand.self,
                                                             BrewCommand.self,
-                                                            SocialCommand.self,
                                                             JSONCommand.self,
                                                             SourceCommand.self,
                                                             VersionCommand.self, // `fairtool version` shows the current version
@@ -351,7 +318,7 @@ public struct OutputOptions: ParsableArguments {
 }
 
 extension OutputOptions {
-    func writeCatalog(_ catalog: AppCatalog) throws -> Data {
+    func writeCatalog(_ catalog: AltCatalog) throws -> Data {
         let json = try catalog.toJSON(outputFormatting: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes], dateEncodingStrategy: .iso8601, dataEncodingStrategy: .base64)
         try self.write(json)
         return json
@@ -382,20 +349,20 @@ public struct SourceOptions: CatalogSourceOptions, ParsableArguments {
 
     // Per-app arguments
 
-    @Option(help: ArgumentHelp("The default description(s) for the app(s)", valueName: "desc"))
-    public var appLocalizedDescription: [String] = []
-
-    @Option(help: ArgumentHelp("The default versionDescription for the app(s)", valueName: "desc"))
-    public var appVersionDescription: [String] = []
-
-    @Option(help: ArgumentHelp("The default subtitle(s) for the app(s)", valueName: "title"))
-    public var appSubtitle: [String] = []
-
-    @Option(help: ArgumentHelp("The default developer name(s) for the app(s)", valueName: "email"))
-    public var appDeveloperName: [String] = []
-
-    @Option(help: ArgumentHelp("The download URLfor the app(s)", valueName: "URL"))
-    public var appDownloadURL: [String] = []
+//    @Option(help: ArgumentHelp("The default description(s) for the app(s)", valueName: "desc"))
+//    public var appLocalizedDescription: [String] = []
+//
+//    @Option(help: ArgumentHelp("The default versionDescription for the app(s)", valueName: "desc"))
+//    public var appVersionDescription: [String] = []
+//
+//    @Option(help: ArgumentHelp("The default subtitle(s) for the app(s)", valueName: "title"))
+//    public var appSubtitle: [String] = []
+//
+//    @Option(help: ArgumentHelp("The default developer name(s) for the app(s)", valueName: "email"))
+//    public var appDeveloperName: [String] = []
+//
+//    @Option(help: ArgumentHelp("The download URLfor the app(s)", valueName: "URL"))
+//    public var appDownloadURL: [String] = []
 
     public init() {
     }
@@ -485,11 +452,6 @@ public struct RegOptions: ParsableArguments {
 
     public init() {
 
-    }
-
-    @available(*, deprecated)
-    func fairReg() throws -> FairHub.ProjectConfiguration {
-        try createProjectConfiguration()
     }
 
     func createProjectConfiguration() throws -> FairHub.ProjectConfiguration {
@@ -788,95 +750,95 @@ extension FairParsableCommand {
     }
 
     /// Parses the `AccentColor.colorset/Contents.json` file and returns the first color item
-    func parseColorContents(url: URL) throws -> (r: Double, g: Double, b: Double, a: Double)? {
-        try AccentColorList(fromJSON: Data(contentsOf: url)).firstRGBAColor
-    }
+//    func parseColorContents(url: URL) throws -> (r: Double, g: Double, b: Double, a: Double)? {
+//        try AccentColorList(fromJSON: Data(contentsOf: url)).firstRGBAColor
+//    }
 
-    @discardableResult func saveCask(_ app: AppCatalogItem, to caskFolderFlag: String, prereleaseSuffix: String?) throws -> Bool {
-        let appNameSpace = app.name
-        let appNameHyphen = app.name.rehyphenated()
-
-        guard let version = app.version else {
-            msg(.info, "no version for app: \(appNameHyphen)")
-            return false
-        }
-
-        guard let sha256 = app.sha256 else {
-            msg(.info, "no hash for app: \(appNameHyphen)")
-            return false
-        }
-
-        let fairground = Bundle.catalogBrowserAppOrg // e.g., App-Fair
-
-        let isCatalogAppCask = appNameHyphen == fairground
-
-        var caskName = appNameHyphen.lowercased()
-
-        if app.beta == true {
-            guard let prereleaseSuffix = prereleaseSuffix else {
-                return false // we've speficied not to generate casks for pre-releases
-            }
-            caskName = caskName + prereleaseSuffix
-        }
-
-        let caskPath = caskName + ".rb"
-
-        // apps other than "Catalog Name.app" are installed att "/Applications/Catalog Name/App Name.app"
-        let installPrefix = isCatalogAppCask ? "" : (fairground.dehyphenated() + "/")
-
-        // depending on the fair-ground's catalog app becomes difficult when the catalog app updates itself; homebrew won't overwrite the self-updated app even with the force flag, which means that a user may need to manually delete and re-install the app;
-        // let fairgroundCask = fairground.lowercased() // e.g., app-fair
-        let dependency = "" // isCatalogAppCask ? "" : "depends_on cask: \"\(fairgroundCask)\""
-
-        let appDesc = (app.subtitle ?? appNameSpace).replacingOccurrences(of: "\"", with: "'")
-        guard var downloadURL = app.downloadURL?.absoluteString else {
-            dbg("missing downloadURL")
-            return false
-        }
-
-        // all apps other than the catalog browser are
-        let appStanza = "app \"\(appNameSpace).app\", target: \"\(installPrefix)\(appNameSpace).app\""
-
-        // this helper stanza will make an executable symlink from the app binary to the cask name
-        // it will allow the running of "Super App.app" CLI with /usr/local/bin/super-app
-        let appHelper = /* !isCatalogAppCask ? "" : */ "binary \"#{appdir}/\(installPrefix)\(appNameSpace).app/Contents/MacOS/\(appNameSpace)\", target: \"\(caskName)\""
-
-        // change the hardcoded version string to a "#{version}" token, which minimizes the number of source changes when the app is upgraded
-        downloadURL = downloadURL.replacingOccurrences(of: "/\(version)/", with: "/#{version}/")
-
-        let repobase = "github.com/\(appNameHyphen)/"
-
-        let caskSpec = """
-cask "\(caskName)" do
-  version "\(version)"
-  sha256 "\(sha256)"
-
-  url "\(downloadURL)",
-      verified: "\(repobase)"
-  name "\(appNameSpace)"
-  desc "\(appDesc)"
-  homepage "https://\(repobase)App/"
-
-  depends_on macos: ">= :monterey"
-  \(dependency)
-
-  \(appStanza)
-  \(appHelper)
-
-  postflight do
-    system "xattr", "-r", "-d", "com.apple.quarantine", "#{appdir}/\(installPrefix)\(app.name).app"
-  end
-
-  zap trash: [
-    \(app.installationDataLocations.map({ $0.enquote(with: #"""#) }).joined(separator: ",\n    "))
-  ]
-end
-"""
-
-        let caskFile = URL(fileURLWithPath: caskFolderFlag).appendingPathComponent(caskPath)
-        try caskSpec.write(to: caskFile, atomically: false, encoding: .utf8)
-        return true
-    }
+//    @discardableResult func saveCask(_ app: AltCatalogItem, to caskFolderFlag: String, prereleaseSuffix: String?) throws -> Bool {
+//        let appNameSpace = app.name
+//        let appNameHyphen = app.name.rehyphenated()
+//
+//        guard let version = app.version else {
+//            msg(.info, "no version for app: \(appNameHyphen)")
+//            return false
+//        }
+//
+//        guard let sha256 = app.sha256 else {
+//            msg(.info, "no hash for app: \(appNameHyphen)")
+//            return false
+//        }
+//
+//        let fairground = Bundle.catalogBrowserAppOrg // e.g., App-Fair
+//
+//        let isCatalogAppCask = appNameHyphen == fairground
+//
+//        var caskName = appNameHyphen.lowercased()
+//
+//        if app.beta == true {
+//            guard let prereleaseSuffix = prereleaseSuffix else {
+//                return false // we've speficied not to generate casks for pre-releases
+//            }
+//            caskName = caskName + prereleaseSuffix
+//        }
+//
+//        let caskPath = caskName + ".rb"
+//
+//        // apps other than "Catalog Name.app" are installed att "/Applications/Catalog Name/App Name.app"
+//        let installPrefix = isCatalogAppCask ? "" : (fairground.dehyphenated() + "/")
+//
+//        // depending on the fair-ground's catalog app becomes difficult when the catalog app updates itself; homebrew won't overwrite the self-updated app even with the force flag, which means that a user may need to manually delete and re-install the app;
+//        // let fairgroundCask = fairground.lowercased() // e.g., app-fair
+//        let dependency = "" // isCatalogAppCask ? "" : "depends_on cask: \"\(fairgroundCask)\""
+//
+//        let appDesc = (app.subtitle ?? appNameSpace).replacingOccurrences(of: "\"", with: "'")
+//        guard var downloadURL = app.downloadURL?.absoluteString else {
+//            dbg("missing downloadURL")
+//            return false
+//        }
+//
+//        // all apps other than the catalog browser are
+//        let appStanza = "app \"\(appNameSpace).app\", target: \"\(installPrefix)\(appNameSpace).app\""
+//
+//        // this helper stanza will make an executable symlink from the app binary to the cask name
+//        // it will allow the running of "Super App.app" CLI with /usr/local/bin/super-app
+//        let appHelper = /* !isCatalogAppCask ? "" : */ "binary \"#{appdir}/\(installPrefix)\(appNameSpace).app/Contents/MacOS/\(appNameSpace)\", target: \"\(caskName)\""
+//
+//        // change the hardcoded version string to a "#{version}" token, which minimizes the number of source changes when the app is upgraded
+//        downloadURL = downloadURL.replacingOccurrences(of: "/\(version)/", with: "/#{version}/")
+//
+//        let repobase = "github.com/\(appNameHyphen)/"
+//
+//        let caskSpec = """
+//cask "\(caskName)" do
+//  version "\(version)"
+//  sha256 "\(sha256)"
+//
+//  url "\(downloadURL)",
+//      verified: "\(repobase)"
+//  name "\(appNameSpace)"
+//  desc "\(appDesc)"
+//  homepage "https://\(repobase)App/"
+//
+//  depends_on macos: ">= :monterey"
+//  \(dependency)
+//
+//  \(appStanza)
+//  \(appHelper)
+//
+//  postflight do
+//    system "xattr", "-r", "-d", "com.apple.quarantine", "#{appdir}/\(installPrefix)\(app.name).app"
+//  end
+//
+//  zap trash: [
+//    \(app.installationDataLocations.map({ $0.enquote(with: #"""#) }).joined(separator: ",\n    "))
+//  ]
+//end
+//"""
+//
+//        let caskFile = URL(fileURLWithPath: caskFolderFlag).appendingPathComponent(caskPath)
+//        try caskSpec.write(to: caskFile, atomically: false, encoding: .utf8)
+//        return true
+//    }
 
     static var packageValidationLine: String { "// MARK: fair-ground package validation" }
 

@@ -1,7 +1,0 @@
-// Japanese strings for the FairKit framework.
-// Translators wanted! Simply edit this file…
-
-"OK" = "了解";
-"Cancel" = "キャンセルする";
-"Welcome to %@!" = "%@ へようこそ！";
-

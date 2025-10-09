@@ -1,7 +1,0 @@
-// Italian strings for the FairKit framework.
-// Translators wanted! Simply edit this file…
-
-"OK" = "OK";
-"Cancel" = "Annulla";
-"Welcome to %@!" = "Benvenuto su %@!";
-

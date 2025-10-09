@@ -1,0 +1,85 @@
+import Swift
+import FairCore
+import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
+/// An interface for the AltStore web services.
+///
+/// https://faq.altstore.io/developers/rest-api
+public struct AltStoreService : EndpointService {
+    public var endpointBase: URL
+
+    public static var backoffCodes: IndexSet = []
+
+    public init(endpointBase: URL = URL(string: "https://api.altstore.io")!) {
+        self.endpointBase = endpointBase
+    }
+
+    /// The HTTP headers that should be attached to all API requests
+    public var requestHeaders: [String: String] {
+        var headers: [String: String] = [:]
+        headers["Content-Type"] = "application/json"
+        //if let authToken = authToken {
+        //    headers["Authorization"] = "token " + authToken
+        //}
+        return headers
+    }
+
+    /// https://faq.altstore.io/developers/rest-api#download-adp
+    public struct ADPDownloadRequest : APIRequest {
+        public typealias Response = ADPProcessResponse
+
+        public let adpID: UUID
+
+        public init(adpID: UUID) {
+            self.adpID = adpID
+        }
+
+        public func queryURL(for service: AltStoreService) -> URL {
+            service.endpointBase.appending(components: "adps", adpID.uuidString) // GET
+        }
+        
+        public func postData() throws -> Data? {
+            nil
+        }
+    }
+
+    /// https://faq.altstore.io/developers/rest-api#process-adp
+    public struct ADPProcessRequest : APIRequest {
+        public typealias Response = ADPProcessResponse
+
+        public let adpID: UUID
+
+        public init(adpID: UUID) {
+            self.adpID = adpID
+        }
+
+        public func queryURL(for service: AltStoreService) -> URL {
+            service.endpointBase.appending(components: "adps") // POST
+        }
+
+        public func postData() throws -> Data? {
+            struct Request : Encodable {
+                let adpID: UUID
+            }
+            return try JSONEncoder().encode(Request(adpID: adpID))
+        }
+    }
+
+    /// Examples:
+    /// `{"updated":"2025-09-30T22:09:15Z","status":"success","downloadExpired":true,"id":"51a5bdf8-e0a8-4cda-8fa5-00c8a68a4bf3","operationID":"18144721590","created":"2025-09-30T22:06:18Z","downloadExpiration":"2025-10-05T22:09:02Z"}`
+    ///`{"operationID":"18351111388","updated":"2025-10-08T16:15:14Z","created":"2025-10-08T16:15:11Z","status":"inProgress","id":"25612dfb-12ce-41d5-819c-354de71c23f8"}`
+    /// `{"downloadExpired":false,"downloadExpiration":"2025-10-13T16:18:03Z","id":"25612dfb-12ce-41d5-819c-354de71c23f8","operationID":"18351111388","updated":"2025-10-08T16:18:13Z","status":"success","downloadURL":"https://productionresultssa5.blob.core.windows.net/actions-results/a764e296-d4de-4ecb-bd04-791a873c4dcc/…","created":"2025-10-08T16:15:11Z"}`
+    public struct ADPProcessResponse : Codable {
+        public let id: UUID
+        public let status: String? // e.g., "inProgress" or "success"
+        public let downloadExpiration: Date?
+        public let downloadExpired: Bool?
+        public let operationID: String?
+        public let created: Date?
+        public let updated: Date?
+        public let downloadURL: URL?
+    }
+}

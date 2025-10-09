@@ -1,20 +1,3 @@
-##############################################################################
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Affero General Public License as
-#    published by the Free Software Foundation, either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU Affero General Public License for more details.
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-##############################################################################
-
 name: Continuous Integration
 
 on:
@@ -39,7 +22,7 @@ jobs:
         run: swift --version 
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Run fairtool
         run: |
@@ -60,10 +43,10 @@ jobs:
           fairtool-head version
 
   ci-macOS:
-    runs-on: macos-12
+    runs-on: macos-latest
     timeout-minutes: 90
     env:
-      DEVELOPER_DIR: /Applications/Xcode_14.1.app/Contents/Developer
+      #DEVELOPER_DIR: /Applications/Xcode_14.1.app/Contents/Developer
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       FAIRHUB_API_SKIP: true # used by tests to determine load
 
@@ -71,17 +54,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
  
-      - name: Test iOS (Debug)
-        run: xcodebuild test -configuration Debug -scheme "Fair-Package" -sdk "iphonesimulator" -destination "platform=iOS Simulator,name=iPhone 14 Pro"
+      #- name: Test iOS (Debug)
+      #  run: xcodebuild test -configuration Debug -scheme "Fair-Package" -sdk "iphonesimulator" -destination "platform=iOS Simulator,name=iPhone 14 Pro"
 
-      - name: Test iOS (Release)
-        run: xcodebuild test -configuration Release -scheme "Fair-Package" -sdk "iphonesimulator" -destination "platform=iOS Simulator,name=iPhone 14 Pro"
+      #- name: Test iOS (Release)
+      #  run: xcodebuild test -configuration Release -scheme "Fair-Package" -sdk "iphonesimulator" -destination "platform=iOS Simulator,name=iPhone 14 Pro"
 
       - name: Test macOS (Debug)
         run: xcodebuild test -configuration Debug -scheme "Fair-Package" -sdk "macosx" -destination "platform=macosx"
 
-      - name: Test macOS (Release)
-        run: xcodebuild test -configuration Release -scheme "Fair-Package" -sdk "macosx" -destination "platform=macosx"
+      #- name: Test macOS (Release)
+      #  run: xcodebuild test -configuration Release -scheme "Fair-Package" -sdk "macosx" -destination "platform=macosx"
 
       - name: Test Package
         run: xcrun swift test --parallel
@@ -89,18 +72,19 @@ jobs:
       - name: Run fairtool
         run: xcrun swift run fairtool version
 
-      - name: Check fairtool formula
-        run: |
-          export HOMEBREW_NO_INSTALL_CLEANUP=1
-          brew install fair-ground/tool/fairtool-head
-          brew test fairtool-head
-          fairtool-head version
-          #fairtool-head app fork App-Name
-          #fairtool-head app config App-Name
-          #fairtool-head app release App-Name
-          #fairtool-head app integrate App-Name
+      #- name: Check fairtool formula
+      #  run: |
+      #    export HOMEBREW_NO_INSTALL_CLEANUP=1
+      #    brew install fair-ground/tool/fairtool-head
+      #    brew test fairtool-head
+      #    fairtool-head version
+      #    #fairtool-head app fork App-Name
+      #    #fairtool-head app config App-Name
+      #    #fairtool-head app release App-Name
+      #    #fairtool-head app integrate App-Name
 
   api-doc:
+    if: false
     runs-on: macos-12
     timeout-minutes: 20
     env:

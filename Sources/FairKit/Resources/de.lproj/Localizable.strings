@@ -1,7 +1,0 @@
-// German strings for the FairKit framework.
-// Translators wanted! Simply edit this file…
-
-"Ok" = "Zustimmen";
-"Cancel" = "Abbrechen";
-"Welcome to %@!" = "Willkommen bei %@!";
-

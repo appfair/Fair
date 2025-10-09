@@ -5,5 +5,4 @@ let Info : [String : Any] = [
         "CFBundleInfoDictionaryVersion" : "6.0",
         "CFBundlePackageType" : "FMWK",
         "CFBundleShortVersionString" : "0.9.1",
-        "NSHumanReadableCopyright" : "GNU Affero General Public License",
     ]

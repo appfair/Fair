@@ -1,38 +1,6 @@
-/**
- Copyright (c) 2022 Marc Prud'hommeaux
-
- This program is free software: you can redistribute it and/or modify
- it under the terms of the GNU Affero General Public License as
- published by the Free Software Foundation, either version 3 of the
- License, or (at your option) any later version.
-
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU Affero General Public License for more details.
-
- The full text of the GNU Affero General Public License can be
- found in the COPYING.txt file or at https://www.gnu.org/licenses/
-
- Linking this library statically or dynamically with other modules is
- making a combined work based on this library.  Thus, the terms and
- conditions of the GNU Affero General Public License cover the whole
- combination.
-
- As a special exception, the copyright holders of this library give you
- permission to link this library with independent modules to produce an
- executable, regardless of the license terms of these independent
- modules, and to copy and distribute the resulting executable under
- terms of your choice, provided that you also meet, for each linked
- independent module, the terms and conditions of the license of that
- module.  An independent module is a module which is not derived from
- or based on this library.  If you modify this library, you may extend
- this exception to your version of the library, but you are not
- obligated to do so.  If you do not wish to do so, delete this
- exception statement from your version.
- */
+import Foundation
+import FairCore
 import FairExpo
-import FairApp
 import ArgumentParser
 
 public struct BrewCommand : AsyncParsableCommand {
@@ -106,31 +74,31 @@ public struct BrewCommand : AsyncParsableCommand {
         }
 
         private func createAppCasks() async throws {
-            let hub = try hubOptions.fairHub()
-
-            let appids = boostApps
-                .map { $0.split(separator: "|") }
-                .joined()
-                .map { (String($0), 1) }
-
-            // sum up duplicate boosts to get the count
-            let boostMap: [String : Int] = Dictionary(appids) { $0 + $1 }
-
-            let catalogName = sourceOptions.catalogName ?? "appcasks"
-            let catalogIdentifier = sourceOptions.catalogIdentifier ?? "identifier"
-            let mergeCasksURL = mergeCaskInfo.flatMap(URL.init(string:))
-            let caskStatsURL = mergeCaskStats.flatMap(URL.init(string:))
-
-            // build the catalog filtering on specific artifact extensions
-            var catalog = try await hub.buildAppCasks(owner: hubOptions.organizationName, catalogName: catalogName, catalogIdentifier: catalogIdentifier,  baseRepository: self.casksRepo, topicName: topicName, starrerName: starrerName, maxApps: maxApps, mergeCasksURL: mergeCasksURL, caskStatsURL: caskStatsURL, boostMap: boostMap, boostFactor: boostFactor, caskQueryCount: caskQueryCount, releaseQueryCount: releaseQueryCount, assetQueryCount: assetQueryCount, msg: {
-                self.msg(.debug, $0, $1, $2, $3, $4, $5, $6, $7, $8, $9)
-            })
-
-            if fundingSources {
-                catalog.fundingSources = try await hub.buildFundingSources(owner: hubOptions.organizationName, baseRepository: self.casksRepo)
-            }
-            let json = try outputOptions.writeCatalog(catalog)
-            msg(.info, "Wrote", catalog.apps.count, "appcasks to", outputOptions.output, json.count)
+//            let hub = try hubOptions.fairHub()
+//
+//            let appids = boostApps
+//                .map { $0.split(separator: "|") }
+//                .joined()
+//                .map { (String($0), 1) }
+//
+//            // sum up duplicate boosts to get the count
+//            let boostMap: [String : Int] = Dictionary(appids) { $0 + $1 }
+//
+//            let catalogName = sourceOptions.catalogName ?? "appcasks"
+//            let catalogIdentifier = sourceOptions.catalogIdentifier ?? "identifier"
+//            let mergeCasksURL = mergeCaskInfo.flatMap(URL.init(string:))
+//            let caskStatsURL = mergeCaskStats.flatMap(URL.init(string:))
+//
+//            // build the catalog filtering on specific artifact extensions
+//            var catalog = try await hub.buildAppCasks(owner: hubOptions.organizationName, catalogName: catalogName, catalogIdentifier: catalogIdentifier,  baseRepository: self.casksRepo, topicName: topicName, starrerName: starrerName, maxApps: maxApps, mergeCasksURL: mergeCasksURL, caskStatsURL: caskStatsURL, boostMap: boostMap, boostFactor: boostFactor, caskQueryCount: caskQueryCount, releaseQueryCount: releaseQueryCount, assetQueryCount: assetQueryCount, msg: {
+//                self.msg(.debug, $0, $1, $2, $3, $4, $5, $6, $7, $8, $9)
+//            })
+//
+//            if fundingSources {
+//                catalog.fundingSources = try await hub.buildFundingSources(owner: hubOptions.organizationName, baseRepository: self.casksRepo)
+//            }
+//            let json = try outputOptions.writeCatalog(catalog)
+//            msg(.info, "Wrote", catalog.apps.count, "appcasks to", outputOptions.output, json.count)
         }
     }
 }
