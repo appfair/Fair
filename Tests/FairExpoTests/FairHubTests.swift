@@ -70,7 +70,7 @@ final class FairHubTests: XCTestCase {
             let org = content.organization
             let repo = org.repository
 
-            XCTAssertEqual(nil, org.email)
+            XCTAssertEqual("appfair@appfair.org", org.email)
             XCTAssertEqual(appfairName, org.login)
 
             XCTAssertEqual(0, repo.discussionCategories.totalCount)
@@ -190,9 +190,9 @@ final class FairHubTests: XCTestCase {
     }
 
     func testSemanticForkIndex() async throws {
-//        if runningFromCI {
-//            throw XCTSkip("disabled to reduce API load")
-//        }
+        if runningFromCI {
+            throw XCTSkip("disabled to reduce API load")
+        }
 
         let hub = try Self.hub(skipNoAuth: true)
         for try await batch in hub.requestBatchedStream(FairHub.SemanticForksQuery(owner: "appfair", name: "App")) {
