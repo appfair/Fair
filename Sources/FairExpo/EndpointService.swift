@@ -68,9 +68,9 @@ public extension EndpointService {
 }
 
 extension EndpointService {
-        /// Issue a request while waiting for the expected request
-        /// Note: currently unused
-        public func requestAsyncWithRateLimit<A: APIRequest>(_ request: A, cache: URLRequest.CachePolicy? = nil, retry: Bool = true) async throws -> A.Response where A.Service == Self {
+    /// Issue a request while waiting for the expected request
+    /// Note: currently unused
+    public func requestAsyncWithRateLimit<A: APIRequest>(_ request: A, cache: URLRequest.CachePolicy? = nil, retry: Bool = true) async throws -> A.Response where A.Service == Self {
         let (data, response) = try await session.data(for: buildRequest(for: request, cache: cache))
 
         // check response headers for rate-limiting

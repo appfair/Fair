@@ -442,6 +442,7 @@ extension FairCommand {
             msg(.debug, "  discussion categories:", repo.discussionCategories.totalCount)
 
             let configuration = try self.regOptions.createProjectConfiguration()
+            let _ = configuration
 //            let invalid = hub.validate(org: organization, configuration: configuration)
 //            if !invalid.isEmpty {
 //                throw FairHub.Errors.repoInvalid(invalid, org, repoName)

@@ -55,7 +55,7 @@ final class CryptoTests: XCTestCase {
         XCTAssertEqual([14, 113, 168], UInt8.randomSequence(seed: [1, 2, 3, 9, 99, 0]).prefix(3).array())
     }
 
-    private func randomData(count: Int) -> Data {
+    private static func randomData(count: Int) -> Data {
         Data((1...count).map({ _ in UInt8.random(in: (.min)...(.max)) }))
     }
 
@@ -67,7 +67,7 @@ final class CryptoTests: XCTestCase {
     /// Checks that the SHA1 hex from random data matches between the internal implementation and the CommonCrypto one
     func testSHA1Implementation() {
         DispatchQueue.concurrentPerform(iterations: 10) { _ in
-            let data = randomData(count: Int.random(in: 1...10000))
+            let data = Self.randomData(count: Int.random(in: 1...10000))
             let sha1a = data.sha1()
             let sha1b = data.sha1Uncommon()
             XCTAssertEqual(sha1a.hex(), sha1b.hex())
@@ -77,7 +77,7 @@ final class CryptoTests: XCTestCase {
     /// Checks that the SHA256 hex from random data matches between the internal implementation and the CommonCrypto one
     func testSHA256Implementation() {
         DispatchQueue.concurrentPerform(iterations: 10) { _ in
-            let data = randomData(count: Int.random(in: 1...10000))
+            let data = Self.randomData(count: Int.random(in: 1...10000))
             let sha256a = data.sha256()
             let sha256b = data.sha256Uncommon()
             XCTAssertEqual(sha256a.hex(), sha256b.hex())
@@ -87,8 +87,8 @@ final class CryptoTests: XCTestCase {
     /// Checks that the HMAC hex from random data matches between the internal implementation and the CommonCrypto one
     func testHMACSHA1Implementation() {
         DispatchQueue.concurrentPerform(iterations: 10) { _ in
-            let data = randomData(count: Int.random(in: 1...100_000))
-            let kdata = randomData(count: Int.random(in: 1...1_000))
+            let data = Self.randomData(count: Int.random(in: 1...100_000))
+            let kdata = Self.randomData(count: Int.random(in: 1...1_000))
             let hmac1 = data.hmacSHA(key: kdata, hash: .sha1)
             let hmac2 = data.hmacSHAUncommon(key: kdata, hash: .sha1)
             XCTAssertEqual(hmac1.hex(), hmac2.hex())
@@ -98,8 +98,8 @@ final class CryptoTests: XCTestCase {
     /// Checks that the HMAC hex from random data matches between the internal implementation and the CommonCrypto one
     func testHMACSHA256Implementation() async {
         DispatchQueue.concurrentPerform(iterations: 10) { _ in
-            let data = randomData(count: Int.random(in: 1...100_000))
-            let kdata = randomData(count: Int.random(in: 1...1_000))
+            let data = Self.randomData(count: Int.random(in: 1...100_000))
+            let kdata = Self.randomData(count: Int.random(in: 1...1_000))
             let hmac1 = data.hmacSHA(key: kdata, hash: .sha256)
             let hmac2 = data.hmacSHAUncommon(key: kdata, hash: .sha256)
             XCTAssertEqual(hmac1.hex(), hmac2.hex())

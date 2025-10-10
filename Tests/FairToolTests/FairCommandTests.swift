@@ -378,6 +378,9 @@ final class FairCommandTests: XCTestCase {
 
         let cat1 = try AltCatalog.parse(jsonData: pre)
         let cat2 = try AltCatalog.parse(jsonData: post)
+
+        let _ = (cat1, cat2)
+
 //        XCTAssertNotEqual(try cat1.json(), try cat2.json())
 
 //        let diffs = AltCatalog.newReleases(from: cat1, to: cat2)
