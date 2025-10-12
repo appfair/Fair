@@ -65,7 +65,7 @@ public struct AppPlatform : RawCodable, Hashable {
     public static let iOS = AppPlatform(rawValue: "ios")
     //public static let tvos = AppPlatform(rawValue: "tvos")
     //public static let watchos = AppPlatform(rawValue: "watchos")
-    //public static let android = AppPlatform(rawValue: "android")
+    public static let android = AppPlatform(rawValue: "android")
     //public static let linux = AppPlatform(rawValue: "linux")
     //public static let windows = AppPlatform(rawValue: "windows")
 
@@ -335,7 +335,7 @@ extension AppFundingLink {
     }
 }
 
-public extension AltCatalogItem {
+public extension AltCatalogAppItem {
 
     /// The hyphenated form of this app's name
     var appNameHyphenated: String {

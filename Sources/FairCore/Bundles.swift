@@ -844,7 +844,7 @@ extension Bundle {
 
 
 /// A collection of data resources, such as a file system hierarchy or a zip archive of files.
-public protocol DataWrapper : AnyObject {
+public protocol DataWrapper {
     associatedtype Path : DataWrapperPath
     /// The root URL of this data wrapper
     var containerURL: URL { get }
@@ -857,6 +857,9 @@ public protocol DataWrapper : AnyObject {
     var paths: [Path] { get }
 
     func find(pathsMatching: NSRegularExpression) -> [Path]
+
+    /// Loads the raw data at the given path
+    func data(atPath: String) throws -> Data
 }
 
 public protocol DataWrapperPath {
@@ -922,6 +925,10 @@ public class FileSystemDataWrapper : DataWrapper {
             throw CocoaError(.fileReadNoSuchFile)
         }
         return try SeekableFileHandle(FileHandle(forReadingFrom: path))
+    }
+
+    public func data(atPath: String) throws -> Data {
+        try seekableData(at: root.appending(path: atPath)).readData(ofLength: nil)
     }
 
     public func find(pathsMatching expression: NSRegularExpression) -> [Path] {
@@ -1040,6 +1047,13 @@ public class ZipArchiveDataWrapper : DataWrapper {
             throw CocoaError(.fileReadNoSuchFile)
         }
         return SeekableDataHandle(try archive.extractData(from: entry))
+    }
+
+    public func data(atPath: String) throws -> Data {
+        guard let path = paths.filter( { $0.pathName == atPath } ).first else {
+            throw CocoaError(.fileReadNoSuchFile)
+        }
+        return try seekableData(at: path).readData(ofLength: nil)
     }
 
     public func find(pathsMatching expression: NSRegularExpression) -> [Path] {

@@ -16,26 +16,26 @@ public class AppBundle<Source: DataWrapper> {
     /// Cache of entitlements once loaded
     private var _entitlements: [AppEntitlements]??
 
-    public func entitlements() async throws -> [AppEntitlements]? {
+    public func entitlements() throws -> [AppEntitlements]? {
         if let entitlements = _entitlements {
             return entitlements
         }
-        let ent = try await self.loadEntitlements()
+        let ent = try self.loadEntitlements()
         self._entitlements = .some(ent)
         return ent
     }
 
-    public func isSandboxed() async throws -> Bool? {
-        try await entitlement(for: .app_sandbox)
+    public func isSandboxed() throws -> Bool? {
+        try entitlement(for: .app_sandbox)
     }
 
-    public func appGroups() async throws -> [String]? {
-        try await entitlement(for: .application_groups)
+    public func appGroups() throws -> [String]? {
+        try entitlement(for: .application_groups)
     }
 
-    public init(source: Source) async throws {
+    public init(source: Source) throws {
         self.source = source
-        guard let (info, parent, node) = try await Self.readInfo(source: source) else {
+        guard let (info, parent, node) = try Self.readInfo(source: source) else {
             throw AppBundleErrors.missingInfo
         }
         self.infoDictionary = info
@@ -47,8 +47,8 @@ public class AppBundle<Source: DataWrapper> {
         #endif
     }
 
-    public func entitlement<T>(for key: AppEntitlement) async throws -> T? {
-        try await self.entitlements()?.compactMap({ $0.value(forKey: key) as? T }).first
+    public func entitlement<T>(for key: AppEntitlement) throws -> T? {
+        try self.entitlements()?.compactMap({ $0.value(forKey: key) as? T }).first
     }
 }
 
@@ -87,11 +87,11 @@ public extension FileManager {
 public enum AppBundleLoader {
     /// Loads the entitlements from an app bundle (either a ipa zip or an expanded binary package).
     /// Multiple entitlements will be returned when an executable is a fat binary, although they are likely to all be equal.
-    public static func loadInfo(fromAppBundle url: URL) async throws -> (info: Plist, entitlements: [AppEntitlements]?) {
+    public static func loadInfo(fromAppBundle url: URL) throws -> (info: Plist, entitlements: [AppEntitlements]?) {
         if FileManager.default.isDirectory(url: FileManager.default.resolvingSymbolicLink(url)) == true {
-            return try await AppBundle(folderAt: url).loadInfo()
+            return try AppBundle(folderAt: url).loadInfo()
         } else {
-            return try await AppBundle(zipArchiveAt: url).loadInfo()
+            return try AppBundle(zipArchiveAt: url).loadInfo()
         }
     }
 }
@@ -100,8 +100,8 @@ public enum AppBundleLoader {
 public typealias AppVersion = SemVer
 
 extension AppBundle {
-    func loadInfo() async throws -> (info: Plist, entitlements: [AppEntitlements]?) {
-        return try (infoDictionary, await entitlements())
+    func loadInfo() throws -> (info: Plist, entitlements: [AppEntitlements]?) {
+        return try (infoDictionary, entitlements())
     }
 
     public func validatePaths() throws {
@@ -142,11 +142,11 @@ extension AppBundle {
         case ios
     }
 
-    private func loadEntitlements() async throws -> [AppEntitlements]? {
+    private func loadEntitlements() throws -> [AppEntitlements]? {
         guard let executable = try self.loadExecutableData() else {
             return nil
         }
-        return try await MachOBinary(binary: executable).readEntitlements()
+        return try MachOBinary(binary: executable).readEntitlements()
     }
 
     public func loadExecutableData() throws -> SeekableData? {
@@ -164,12 +164,12 @@ extension AppBundle {
         return try self.source.seekableData(at: execNode)
     }
 
-    private static func readInfo(source: Source) async throws -> (Plist, parent: Source.Path?, node: Source.Path)? {
+    private static func readInfo(source: Source) throws -> (Plist, parent: Source.Path?, node: Source.Path)? {
         // dbg("reading info node from:", fs.containerURL.path)
         let rootNodes = try source.nodes(at: nil)
         //dbg("rootNodes:", rootNodes.map(\.pathName))
 
-        func loadInfoPlist(from node: Source.Path) async throws -> (Plist, parent: Source.Path, node: Source.Path)? {
+        func loadInfoPlist(from node: Source.Path) throws -> (Plist, parent: Source.Path, node: Source.Path)? {
             //dbg("attempting to load Info.plist from:", node.pathName)
             let contents = try source.nodes(at: node)
             guard let infoNode = contents.first(where: { $0.pathComponents.last == "Info.plist" }) else {
@@ -177,11 +177,11 @@ extension AppBundle {
                 return nil
             }
             //dbg("found Info.plist node:", infoNode.pathName) // , "from:", contents.map(\.pathName))
-            return try (await loadPlist(from: infoNode), parent: node, node: infoNode)
+            return try (loadPlist(from: infoNode), parent: node, node: infoNode)
         }
 
-        func loadPlist(from infoNode: Source.Path) async throws -> Plist {
-            return try Plist(data: await source.seekableData(at: infoNode).readData(ofLength: nil))
+        func loadPlist(from infoNode: Source.Path) throws -> Plist {
+            return try Plist(data: source.seekableData(at: infoNode).readData(ofLength: nil))
         }
 
         func rootFolders(named names: Set<String>) throws -> [Source.Path] {
@@ -193,9 +193,9 @@ extension AppBundle {
         if let contentsNode = try rootFolders(named: ["Contents"]).first {
             // dbg("contentsNode", contentsNode)
             // check the "Contents/Info.plist" convention (macOS)
-            return try await loadInfoPlist(from: contentsNode)
+            return try loadInfoPlist(from: contentsNode)
         } else if let infoNode = rootNodes.first(where: { $0.pathName == "Info.plist"}) {
-            return try (await loadPlist(from: infoNode), parent: nil, node: infoNode)
+            return try (loadPlist(from: infoNode), parent: nil, node: infoNode)
         } else {
             for payloadNode in try rootFolders(named: ["Payload", "Wrapper"]) {
                 // dbg("payloadNode", payloadNode)
@@ -207,7 +207,7 @@ extension AppBundle {
                     continue
                 }
 
-                return try await loadInfoPlist(from: appNode)
+                return try loadInfoPlist(from: appNode)
             }
         }
 
@@ -226,11 +226,11 @@ extension AppBundle {
             }) {
                 // dbg("contentsNode", contentsNode)
                 // check the "AppName.app/Contents/Info.plist" convention (macOS)
-                return try await loadInfoPlist(from: contentsNode)
+                return try loadInfoPlist(from: contentsNode)
             }
 
             // fall back to "AppName.app/Info.plist" convention (iOS)
-            return try await loadInfoPlist(from: appNode)
+            return try loadInfoPlist(from: appNode)
         }
 
         dbg("returning nil")
@@ -285,7 +285,7 @@ extension AppBundle where Source.Path == URL {
             //let _ = try await Process.exec(cmd: "/usr/bin/plutil", args: ["-replace", "MinimumOSVersion", "-string", "11"] + params + [infoURL.path]).expect()
         }
 
-        let machOFiles = try await self.machOBinaries()
+        let machOFiles = try self.machOBinaries()
         dbg("mach-o files:", machOFiles)
 
         for machOFile in machOFiles {
@@ -321,46 +321,46 @@ extension AppBundle where Source.Path == URL {
 
 extension AppBundle where Source == FileSystemDataWrapper {
     /// Create an `AppBundle` backed by a `FileSystemDataWrapper` with the given root folder file URL.
-    public convenience init(folderAt url: URL) async throws {
+    public convenience init(folderAt url: URL) throws {
 //        if url.pathIsDirectory != true {
 //            throw AppError(String(format: NSLocalizedString("Path was not a directory: %@", bundle: .module, comment: "error message"), url.path))
 //        }
-        try await self.init(source: FileSystemDataWrapper(root: url))
+        try self.init(source: FileSystemDataWrapper(root: url))
     }
 }
 
 
 extension AppBundle where Source == ZipArchiveDataWrapper {
     /// Create an `AppBundle` backed by a `ZipArchiveDataWrapper` with the given zip file URL.
-    public convenience init(zipArchiveAt url: URL) async throws {
-        try await self.init(source: ZipArchiveDataWrapper(archive: ZipArchive(url: url, accessMode: .read)))
+    public convenience init(zipArchiveAt url: URL) throws {
+        try self.init(source: ZipArchiveDataWrapper(archive: ZipArchive(url: url, accessMode: .read)))
     }
 }
 
 extension AppBundle where Source.Path == URL {
     /// Returns `true` if the data at the specified path has the Mach-O magic header.
-    public func maybeMachO(at path: Source.Path) async throws -> Bool {
+    public func maybeMachO(at path: Source.Path) throws -> Bool {
         // this will throw
         //dbg("checking path:", path.path)
         let data = try source.seekableData(at: path)
         //dbg("checked path data:", data, path.path)
         // but this will swallow exceptions, since MachOBinary is assuming sufficient header size
-        return (try? await MachOBinary(binary: data).getBinaryType(fromSliceStartingAt: 0)) != nil
+        return (try? MachOBinary(binary: data).getBinaryType(fromSliceStartingAt: 0)) != nil
     }
 
     /// Returns the list of paths that are probably (based on magic header) Mach-O binaries,
     /// either executable or dynamic libraries.
     /// - Parameter sizeThreshold: the initial size to filter
-    /// - Returns: an async sequence of the Mach-O binaries within the resource.
-    public func machOBinaries(sizeThreshold: UInt64 = 1024) async throws -> [URL] {
-        try await source.paths
+    /// - Returns: a sequence of the Mach-O binaries within the resource.
+    public func machOBinaries(sizeThreshold: UInt64 = 1024) throws -> [URL] {
+        try source.paths
                 .filter({ !$0.pathIsDirectory })
                 .filter { fileURL in
                     //dbg("filtering:", fileURL.pathName, "dir:", fileURL.pathIsDirectory, "size:", fileURL.pathSize, "macho", try? self.maybeMachO(at: fileURL))
                     (fileURL.pathIsDirectory == false) && (fileURL.pathSize ?? 0 > sizeThreshold)
                 }
-                .filterAsync({
-                    try await self.maybeMachO(at: $0) == true
+                .filter({
+                    try self.maybeMachO(at: $0) == true
                 })
     }
 }
@@ -409,13 +409,13 @@ public class MachOBinary {
 
     private let binary: SeekableData
 
-    public init(binary: SeekableData) async throws {
-        self.binary = await binary.reversedEndian()
+    public init(binary: SeekableData) throws {
+        self.binary = binary.reversedEndian()
     }
 
-    fileprivate func getBinaryType(fromSliceStartingAt offset: SeekableData.Offset) async throws -> BinaryType? {
-        try await binary.seek(to: offset)
-        let header: MachOHeader = try await binary.readBinary()
+    fileprivate func getBinaryType(fromSliceStartingAt offset: SeekableData.Offset) throws -> BinaryType? {
+        try binary.seek(to: offset)
+        let header: MachOHeader = try binary.readBinary()
         let commandCount = Int(header.ncmds)
         switch header.magic {
         case MachOMagic.MH_MAGIC:
@@ -431,46 +431,46 @@ public class MachOBinary {
 //        default:
 //            return nil
         default:
-            try await binary.seek(to: offset)
-            let fatHeader: MachOFatHeader = try await binary.readBinary()
+            try binary.seek(to: offset)
+            let fatHeader: MachOFatHeader = try binary.readBinary()
             return CFSwapInt32(fatHeader.magic) == MachOMagic.FAT_MAGIC ? .fat(header: fatHeader) : nil
         }
     }
 
-    public func readEntitlements(fromSliceStartingAt offset: SeekableData.Offset = 0) async throws -> [AppEntitlements] {
-        switch try await getBinaryType(fromSliceStartingAt: offset) {
+    public func readEntitlements(fromSliceStartingAt offset: SeekableData.Offset = 0) throws -> [AppEntitlements] {
+        switch try getBinaryType(fromSliceStartingAt: offset) {
         case .singleArch(let headerInfo):
             let headerSize = headerInfo.headerSize
             let commandCount = headerInfo.commandCount
             //dbg("singleArch:", "offset:", offset, "headerSize:", headerSize, "commandCount:", commandCount)
-            return try await readEntitlementsFromBinarySlice(startingAt: offset + .init(headerSize), cmdCount: commandCount)
+            return try readEntitlementsFromBinarySlice(startingAt: offset + .init(headerSize), cmdCount: commandCount)
         case .fat(header: let header):
-            return try await readEntitlementsFromFatBinary(header)
+            return try readEntitlementsFromFatBinary(header)
         case .none:
             throw Error.unknownBinaryFormat
         }
     }
 
-    private func readEntitlementsFromBinarySlice(startingAt offset: SeekableData.Offset, cmdCount: Int) async throws -> [AppEntitlements] {
-        try await binary.seek(to: offset)
+    private func readEntitlementsFromBinarySlice(startingAt offset: SeekableData.Offset, cmdCount: Int) throws -> [AppEntitlements] {
+        try binary.seek(to: offset)
         var entitlements: [AppEntitlements] = []
         for _ in 0..<cmdCount {
             //dbg("checking for entitlements in offset:", offset, "index:", index, "count:", cmdCount)
-            let command: LoadCommand = try await binary.readBinary()
+            let command: LoadCommand = try binary.readBinary()
             if command.cmd == MachOMagic.LC_CODE_SIGNATURE {
-                let signatureOffset: UInt32 = try await binary.readUInt32()
+                let signatureOffset: UInt32 = try binary.readUInt32()
                 //dbg("checking for sig in signatureOffset:", signatureOffset, "offset:", offset, "index:", index, "count:", cmdCount)
-                if let ent = try await readEntitlementsFromSignature(startingAt: signatureOffset) {
+                if let ent = try readEntitlementsFromSignature(startingAt: signatureOffset) {
                     entitlements.append(ent)
                 }
             }
-            try await binary.seek(to: binary.offset() + .init(command.cmdsize - UInt32(MemoryLayout<LoadCommand>.size)))
+            try binary.seek(to: binary.offset() + .init(command.cmdsize - UInt32(MemoryLayout<LoadCommand>.size)))
         }
 
         return entitlements
     }
 
-    private func readEntitlementsFromFatBinary(_ header: MachOFatHeader) async throws -> [AppEntitlements] {
+    private func readEntitlementsFromFatBinary(_ header: MachOFatHeader) throws -> [AppEntitlements] {
         let archCount = CFSwapInt32(header.nfat_arch)
         //dbg("readEntitlementsFromFatBinary:", header, "archCount:", archCount)
 
@@ -483,7 +483,7 @@ public class MachOBinary {
 //        }
         var arches: [FatArch] = []
         for _ in 0..<archCount {
-            arches.append(try await binary.readBinary())
+            arches.append(try binary.readBinary())
         }
 
         var entitlementList: [AppEntitlements] = []
@@ -499,9 +499,9 @@ public class MachOBinary {
 //                // this should work, but it fails at readEntitlementsFromSignature
 //                entitlements = try readEntitlements(fromSliceStartingAt: .init(offset))
 //            } else {
-                try await binary.seek(to: .init(offset))
-                let slice = try await binary.readData(ofLength: .init(size))
-                entitlements = try await MachOBinary(binary: SeekableDataHandle(slice)).readEntitlements(fromSliceStartingAt: 0)
+                try binary.seek(to: .init(offset))
+                let slice = try binary.readData(ofLength: .init(size))
+                entitlements = try MachOBinary(binary: SeekableDataHandle(slice)).readEntitlements(fromSliceStartingAt: 0)
 //            }
 
             //dbg("fat binary entitlements:", entitlements)
@@ -512,9 +512,9 @@ public class MachOBinary {
 
     }
 
-    private func readEntitlementsFromSignature(startingAt offset: UInt32) async throws -> AppEntitlements? {
-        try await binary.seek(to: .init(offset))
-        let metaBlob: CSSuperBlob = try await binary.readBinary()
+    private func readEntitlementsFromSignature(startingAt offset: UInt32) throws -> AppEntitlements? {
+        try binary.seek(to: .init(offset))
+        let metaBlob: CSSuperBlob = try binary.readBinary()
         //dbg("checking for magic in superblob at:", offset, ":", CFSwapInt32(metaBlob.magic))
         if CFSwapInt32(metaBlob.magic) != CSMagic.embeddedSignature {
             throw Error.badMagicInSignature
@@ -527,13 +527,13 @@ public class MachOBinary {
         for index in 0..<itemCount {
             //dbg("checking code index:", index, "/", itemCount)
             let readOffset = Int(offset + metaBlobSize + index * blobSize)
-            try await binary.seek(to: SeekableData.Offset(readOffset))
-            let blob: CSBlob = try await binary.readBinary()
-            try await binary.seek(to: SeekableData.Offset(offset + CFSwapInt32(blob.offset)))
-            let blobMagic = CFSwapInt32(try await binary.readUInt32())
+            try binary.seek(to: SeekableData.Offset(readOffset))
+            let blob: CSBlob = try binary.readBinary()
+            try binary.seek(to: SeekableData.Offset(offset + CFSwapInt32(blob.offset)))
+            let blobMagic = CFSwapInt32(try binary.readUInt32())
             if blobMagic == CSMagic.embededEntitlements {
-                let signatureLength = CFSwapInt32(try await binary.readUInt32())
-                let signatureData = try await binary.readData(ofLength: .init(signatureLength) - 8)
+                let signatureLength = CFSwapInt32(try binary.readUInt32())
+                let signatureData = try binary.readData(ofLength: .init(signatureLength) - 8)
                 return AppEntitlements.readEntitlements(from: signatureData)
             }
         }
@@ -573,18 +573,18 @@ enum MachOMagic {
 }
 
 private extension SeekableData {
-    func readBinary<T: BinaryReadable>() async throws -> T {
-        try await T(data: self)
+    func readBinary<T: BinaryReadable>() throws -> T {
+        try T(data: self)
     }
 }
 
 private protocol BinaryReadable {
-    init(data: SeekableData) async throws
+    init(data: SeekableData) throws
 }
 
 extension UInt32 : BinaryReadable {
-    init(data: SeekableData) async throws {
-        self = try await data.readUInt32()
+    init(data: SeekableData) throws {
+        self = try data.readUInt32()
     }
 }
 
@@ -595,8 +595,8 @@ struct CSSuperBlob {
 }
 
 extension CSSuperBlob : BinaryReadable {
-    init(data: SeekableData) async throws {
-        self = try await CSSuperBlob(magic: data.readUIntX(), length: data.readUIntX(), count: data.readUIntX())
+    init(data: SeekableData) throws {
+        self = try CSSuperBlob(magic: data.readUIntX(), length: data.readUIntX(), count: data.readUIntX())
     }
 }
 
@@ -606,8 +606,8 @@ struct CSBlob {
 }
 
 extension CSBlob : BinaryReadable {
-    init(data: SeekableData) async throws {
-        self = try await CSBlob(type: data.readUIntX(), offset: data.readUIntX())
+    init(data: SeekableData) throws {
+        self = try CSBlob(type: data.readUIntX(), offset: data.readUIntX())
     }
 }
 
@@ -641,8 +641,8 @@ struct MachOHeader {
 }
 
 extension MachOHeader : BinaryReadable {
-    init(data: SeekableData) async throws {
-        self = try await MachOHeader(magic: data.readUIntX(), cputype: data.readInt32(), cpusubtype: data.readInt32(), filetype: data.readUIntX(), ncmds: data.readUIntX(), sizeofcmds: data.readUIntX(), flags: data.readUIntX())
+    init(data: SeekableData) throws {
+        self = try MachOHeader(magic: data.readUIntX(), cputype: data.readInt32(), cpusubtype: data.readInt32(), filetype: data.readUIntX(), ncmds: data.readUIntX(), sizeofcmds: data.readUIntX(), flags: data.readUIntX())
     }
 }
 
@@ -667,8 +667,8 @@ struct MachOFatHeader {
 }
 
 extension MachOFatHeader : BinaryReadable {
-    init(data: SeekableData) async throws {
-        self = try await MachOFatHeader(magic: data.readUIntX(), nfat_arch: data.readUIntX())
+    init(data: SeekableData) throws {
+        self = try MachOFatHeader(magic: data.readUIntX(), nfat_arch: data.readUIntX())
     }
 }
 
@@ -679,8 +679,8 @@ struct LoadCommand {
 }
 
 extension LoadCommand : BinaryReadable {
-    init(data: SeekableData) async throws {
-        self = try await LoadCommand(cmd: data.readUIntX(), cmdsize: data.readUIntX())
+    init(data: SeekableData) throws {
+        self = try LoadCommand(cmd: data.readUIntX(), cmdsize: data.readUIntX())
     }
 }
 
@@ -694,8 +694,8 @@ struct FatArch {
 }
 
 extension FatArch : BinaryReadable {
-    init(data: SeekableData) async throws {
-        self = try await FatArch(cputype: data.readInt32(), cpusubtype: data.readInt32(), offset: data.readUIntX(), size: data.readUIntX(), align: data.readUIntX())
+    init(data: SeekableData) throws {
+        self = try FatArch(cputype: data.readInt32(), cpusubtype: data.readInt32(), offset: data.readUIntX(), size: data.readUIntX(), align: data.readUIntX())
     }
 }
 

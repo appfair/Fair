@@ -158,11 +158,12 @@ public extension URLRequest {
 extension URLResponse {
     public struct InvalidHTTPCode : Error, LocalizedError {
         public let code: Int
+        public let url: URL?
         //public let response: HTTPURLResponse
 
         public var failureReason: String? {
             //NSLocalizedString("Invalud Cide", bundle: .module, comment: "invalid code error")
-            "Invalid HTTP Response: \(code)"
+            "Invalid HTTP Response: \(code) for URL: \(url?.absoluteString ?? "none")"
         }
     }
 
@@ -178,7 +179,7 @@ extension URLResponse {
         }
 
         if !codes.contains(httpResponse.statusCode) {
-            throw InvalidHTTPCode(code: httpResponse.statusCode)
+            throw InvalidHTTPCode(code: httpResponse.statusCode, url: self.url)
         }
 
         return self // the response is valid
@@ -193,11 +194,7 @@ extension URLSession {
 
     /// A shim for async URL download for back-ported async/await without corresponding URLSession API support
     private func fetchTask(request: URLRequest, validate codes: IndexSet?) async throws -> (data: Data, response: URLResponse) {
-        // testing synchronous version
-        //var response: URLResponse? = nil
-        //let data = try NSURLConnection.sendSynchronousRequest(request, returning: &response)
-        //return (data, response!)
-
+        #if swift(<5.8)
         return try await withCheckedThrowingContinuation { continuation in
             dataTask(with: request) { data, response, error in
                 if let data = data, let response = response, error == nil {
@@ -212,7 +209,11 @@ extension URLSession {
                 }
             }.resume()
         }
-
+        #else
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let validResponse = try response.validating(codes: codes)
+        return (data, validResponse)
+        #endif
     }
 }
 

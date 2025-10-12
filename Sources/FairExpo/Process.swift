@@ -172,7 +172,7 @@ extension Process {
     }
 
     #if os(macOS)
-    /// Returns `swift test <file>`. Untested.
+    /// Returns `swift <op> <package>`. Untested.
     public static func swift(op: String, xcrun: Bool, packageFolder: URL) async throws -> CommandResult {
         if xcrun {
             return try await exec(cmd: "/usr/bin/xcrun", "swift", op, "--package-path", packageFolder.path)

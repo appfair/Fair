@@ -325,24 +325,33 @@ extension OutputOptions {
     }
 }
 
-public struct SourceOptions: CatalogSourceOptions, ParsableArguments {
+public struct SourceOptions: ParsableArguments {
+    @Option(help: ArgumentHelp("The name of the fairground", valueName: "name"))
+    public var fairgroundName: String = "appfair"
+
+    @Option(help: ArgumentHelp("The name of the developer of the catalog", valueName: "name"))
+    public var developerName: String = "The App Fair Project"
+
+    @Option(help: ArgumentHelp("The base URL of the hub repository", valueName: "url"))
+    public var hubRepository: String = "https://github.com"
+
+    @Option(help: ArgumentHelp("The base URL of the hub raw content", valueName: "url"))
+    public var hubContent: String = "https://raw.githubusercontent.com"
+
     @Option(help: ArgumentHelp("The name of the catalog", valueName: "name"))
-    public var catalogName: String?
+    public var catalogName: String = "The App Fair Project"
 
-    @Option(help: ArgumentHelp("The identifier of the catalog", valueName: "id"))
-    public var catalogIdentifier: String?
-
-    @Option(help: ArgumentHelp("The platform for this catalog", valueName: "id"))
-    public var catalogPlatform: String?
+    @Option(help: ArgumentHelp("The subtitle of the catalog", valueName: "name"))
+    public var catalogSubtitle: String = "The free and open-source app catalog"
 
     @Option(help: ArgumentHelp("The description for this catalog", valueName: "desc"))
-    public var catalogLocalizedDescription: String?
-
-    @Option(help: ArgumentHelp("The source URL of the catalog", valueName: "url"))
-    public var catalogSourceURL: String?
+    public var catalogDescription: String = "This catalog contains apps that have been built by the App Fair Project, a non-commercial app marketplace."
 
     @Option(help: ArgumentHelp("The icon URL of the catalog", valueName: "url"))
-    public var catalogIconURL: String?
+    public var catalogIconURL: String = "https://appfair.org/appfair-icon.png"
+
+    @Option(help: ArgumentHelp("The web site of the catalog", valueName: "url"))
+    public var catalogWebsite: String = "https://appfair.org"
 
     @Option(help: ArgumentHelp("The tint color for this catalog", valueName: "rgbhex"))
     public var catalogTintColor: String?
@@ -754,7 +763,7 @@ extension FairParsableCommand {
 //        try AccentColorList(fromJSON: Data(contentsOf: url)).firstRGBAColor
 //    }
 
-//    @discardableResult func saveCask(_ app: AltCatalogItem, to caskFolderFlag: String, prereleaseSuffix: String?) throws -> Bool {
+//    @discardableResult func saveCask(_ app: AltCatalogAppItem, to caskFolderFlag: String, prereleaseSuffix: String?) throws -> Bool {
 //        let appNameSpace = app.name
 //        let appNameHyphen = app.name.rehyphenated()
 //

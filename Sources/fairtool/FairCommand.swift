@@ -776,7 +776,7 @@ extension FairCommand {
 //            let tint = try? parseTintColor()
 //
 //            // extract the AppSource metadata for the item
-//            let sourceInfo: AltCatalogItem? = {
+//            let sourceInfo: AltCatalogAppItem? = {
 //                guard let artifactURL = self.sealOptions.artifactURL,
 //                      let url = URL(string: artifactURL) else {
 //                    return nil

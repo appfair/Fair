@@ -42,16 +42,16 @@ public struct ArtifactCommand : AsyncParsableCommand {
         public func executeCommand() -> AsyncThrowingStream<InfoItem, Error> {
             msg(.debug, "getting info from apps:", apps)
             return executeStream(apps) { app in
-                return try await extractInfo(from: downloadOptions.acquire(path: app, onDownload: { url in
+                return try extractInfo(from: await downloadOptions.acquire(path: app, onDownload: { url in
                     msg(.info, "downloading from URL:", url.absoluteString)
                     return url
                 }))
             }
         }
 
-        private func extractInfo(from: (from: URL, local: URL)) async throws -> InfoItem {
+        private func extractInfo(from: (from: URL, local: URL)) throws -> InfoItem {
             msg(.info, "extracting info: \(from.from)")
-            let (info, entitlements) = try await AppBundleLoader.loadInfo(fromAppBundle: from.local)
+            let (info, entitlements) = try AppBundleLoader.loadInfo(fromAppBundle: from.local)
 
             return try InfoItem(url: from.from, info: info.json(), entitlements: entitlements?.map({ try $0.json() }))
         }

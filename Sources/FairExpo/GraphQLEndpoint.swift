@@ -13,43 +13,6 @@ public struct GraphQLCursor : RawRepresentable, Decodable {
     }
 }
 
-/// A response that returns results in batches with a cursor
-public protocol CursoredAPIResponse {
-    /// Whether there are more pages to fetch or not
-    var hasNextPage: Bool { get }
-    /// The cursor to use to continue pagination
-    var endCursor: GraphQLCursor? { get }
-    /// The number of elements in this response batch
-    var elementCount: Int { get }
-}
-
-
-/// In the common case of a result type that is in `Either<Error>.Or<Result>`, use the success value as the success
-extension Either.Or : CursoredAPIResponse where A : Error, B : CursoredAPIResponse {
-    public var elementCount: Int {
-        result.successValue?.elementCount ?? 0
-    }
-
-    public var hasNextPage: Bool {
-        result.successValue?.hasNextPage == true
-    }
-
-    /// Passes the cursor check through to the success value
-    public var endCursor: GraphQLCursor? {
-        result.successValue?.endCursor
-    }
-}
-
-/// A response from an API that incudes the ability to move through pages.
-public protocol CursoredAPIRequest : APIRequest where Response : CursoredAPIResponse {
-    /// The optional `endCursor` for the paginated request.
-    ///
-    /// This property matches the ability of `gh api graphql --paginate` to
-    /// automatically traverse multiple pages as long as there is a `endCursor` variable.
-    var endCursor: GraphQLCursor? { get set }
-}
-
-
 /// The payload of a successful `GraphQL` query.
 public struct GraphQLPayload<T : Decodable> : Decodable {
     public var data: T

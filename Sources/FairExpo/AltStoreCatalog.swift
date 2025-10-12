@@ -1,17 +1,9 @@
 import Swift
 import FairCore
 import Foundation
-#if canImport(FoundationNetworking)
-import FoundationNetworking
-#endif
-
-// MARK: Serializable Structures
-
-@available(*, deprecated, renamed:  "AltCatalog")
-public typealias AppCatalog = AltCatalog
 
 /// A catalog of apps, consisting of a ``name``, ``identifier``,
-/// individual ``AltCatalogItem`` instances for each app indexed by this catalog,
+/// individual ``AltCatalogAppItem`` instances for each app indexed by this catalog,
 /// as well as optional ``AltCatalogNewsItem`` items.
 ///
 /// https://faq.altstore.io/developers/make-a-source
@@ -37,11 +29,11 @@ public struct AltCatalog : Codable, Equatable {
     /// An ordered list of app bundleIdentifier's you want featured on your source's About page. Currently, only the first five will be displayed.
     public var featuredApps: [String]?
     /// The apps that are currently available
-    public var apps: [AltCatalogItem]
+    public var apps: [AltCatalogAppItem]
     /// Any news items for the catalog
     public var news: [AltCatalogNewsItem]?
 
-    public init(name: String? = nil, subtitle: String? = nil, description: String? = nil, iconURL: String? = nil, headerURL: String? = nil, website: String? = nil, fediUsername: String? = nil, patreonURL: String? = nil, tintColor: String? = nil, featuredApps: [String]? = nil, apps: [AltCatalogItem] = [], news: [AltCatalogNewsItem]? = nil) {
+    public init(name: String? = nil, subtitle: String? = nil, description: String? = nil, iconURL: String? = nil, headerURL: String? = nil, website: String? = nil, fediUsername: String? = nil, patreonURL: String? = nil, tintColor: String? = nil, featuredApps: [String]? = nil, apps: [AltCatalogAppItem] = [], news: [AltCatalogNewsItem]? = nil) {
         self.name = name
         self.subtitle = subtitle
         self.description = description
@@ -85,7 +77,7 @@ public extension AltCatalog {
 /// An individual App Source Catalog item, defining the name, identifier, and downloadURL of an application archive.
 ///
 /// https://faq.altstore.io/developers/make-a-source#apps
-public struct AltCatalogItem : Codable, Equatable {
+public struct AltCatalogAppItem : Codable, Equatable {
     /// The name of your app as it will appear on its store page.
     public var name: String
     /// Your app's bundle identifier (CFBundleIdentifier). It is case sensitive and should match exactly what is in your Info.plist.
@@ -109,18 +101,18 @@ public struct AltCatalogItem : Codable, Equatable {
     /// Screenshots of your app. We recommend showcasing your app's main features.
     public var screenshots: ScreenshotCollection?
     /// A list of all the published versions of your app.
-    public var versions: [AltCatalogItemVersion]?
+    public var versions: [AltCatalogAppItemVersion]?
     /// An object listing all entitlements and privacy permissions information used by the app.
-    public var appPermissions: AltCatalogItemPermissions?
+    public var appPermissions: AltCatalogAppItemPermissions?
     /// An object specifying the required pledge/tiers to download the app.
-    public var patreon: AltCatalogItemPatreon?
+    public var patreon: AltCatalogAppItemPatreon?
 
     /// Screenshots are complicated: they can be either an array of strings, an array of screenshot objects, or a dictionary of strings to an array of screenshot objects
     /// https://faq.altstore.io/developers/make-a-source#universal-apps
     public typealias ScreenshotCollection = Either<[ScreenshotChoice]>.Or<[String: [ScreenshotChoice]]>
     public typealias ScreenshotChoice = Either<String>.Or<AppScreenshot>
 
-    public init(name: String, bundleIdentifier: String? = nil, marketplaceID: String? = nil, developerName: String? = nil, subtitle: String? = nil, localizedDescription: String? = nil, iconURL: String? = nil, tintColor: String? = nil, category: String? = nil, screenshots: ScreenshotCollection? = nil, versions: [AltCatalogItemVersion]? = nil, appPermissions: AltCatalogItemPermissions? = nil, patreon: AltCatalogItemPatreon? = nil) {
+    public init(name: String, bundleIdentifier: String? = nil, marketplaceID: String? = nil, developerName: String? = nil, subtitle: String? = nil, localizedDescription: String? = nil, iconURL: String? = nil, tintColor: String? = nil, category: String? = nil, screenshots: ScreenshotCollection? = nil, versions: [AltCatalogAppItemVersion]? = nil, appPermissions: AltCatalogAppItemPermissions? = nil, patreon: AltCatalogAppItemPatreon? = nil) {
         self.name = name
         self.bundleIdentifier = bundleIdentifier
         self.marketplaceID = marketplaceID
@@ -151,7 +143,7 @@ public struct AppScreenshot : Codable, Equatable {
 }
 
 /// https://faq.altstore.io/developers/make-a-source#app-versions
-public struct AltCatalogItemVersion : Codable, Equatable {
+public struct AltCatalogAppItemVersion : Codable, Equatable {
     /// Your app's version number (CFBundleShortVersionString). It is case sensitive and should match exactly what is in your Info.plist.
     public var version: String
     /// Your app's build number (CFBundleVersion). It is case sensitive and should match exactly what is in your Info.plist.
@@ -188,7 +180,7 @@ public struct AltCatalogItemVersion : Codable, Equatable {
 }
 
 /// https://faq.altstore.io/developers/make-a-source#patreon
-public struct AltCatalogItemPatreon : Codable, Equatable {
+public struct AltCatalogAppItemPatreon : Codable, Equatable {
     /// The minimum pledge amount required for download. This can be used to limit downloads to higher tiers.
     public var pledge: Double
     /// The ISO currency code of your campaign's currency.
@@ -207,7 +199,7 @@ public struct AltCatalogItemPatreon : Codable, Equatable {
 }
 
 /// https://faq.altstore.io/developers/make-a-source#app-permissions
-public struct AltCatalogItemPermissions : Codable, Equatable {
+public struct AltCatalogAppItemPermissions : Codable, Equatable {
     /// A list of all entitlements used by the app and its app extensions.
     public var entitlements: [PermissionEntitlementElement]?
     public typealias PermissionEntitlementElement = Either<PermissionEntitlement>.Or<String>
@@ -216,7 +208,7 @@ public struct AltCatalogItemPermissions : Codable, Equatable {
     public var privacy: PermissionPrivacyOption?
     public typealias PermissionPrivacyOption = Either<[PermissionPrivacy]>.Or<[String: String]>
 
-    public init(entitlements: [PermissionEntitlementElement], privacy: PermissionPrivacyOption) {
+    public init(entitlements: [PermissionEntitlementElement]? = nil, privacy: PermissionPrivacyOption? = nil) {
         self.entitlements = entitlements
         self.privacy = privacy
     }
@@ -306,131 +298,3 @@ public struct AppCatalogSource : RawCodable, Equatable {
     }
 }
 
-extension AltCatalogItem {
-//    /// Localizes the given key path into the specified language code
-//    /// - Parameter keyPath: the path to localize
-//    /// - Returns: the value of the key path
-//    public func localize<T>(key keyPath: KeyPath<Self, T>, into code: String) -> T {
-//        self.localizations?[code]?[keyPath: keyPath] ?? self[keyPath: keyPath]
-//    }
-//
-//    /// Localizes the given key path into the specified language code
-//    /// - Parameter keyPath: the path to localize
-//    /// - Returns: the value of the key path
-//    public func localize<T>(key keyPath: KeyPath<Self, T>, into locale: Locale) -> T {
-//        self.localize(key: keyPath, into: locale.languageTag)
-//    }
-
-}
-
-extension AltCatalog {
-    /// Attempts to localize the catalog into the given language code.
-    ///
-    /// This is accomplished by examining the ``localizations`` dictionary
-    /// for an appropriate base locale, and then examining each child locale in turn
-//    public func localized(into locale: Locale, session: URLSession = URLSession.shared) async throws -> AltCatalog {
-//        guard let localizations = self.localizations, !localizations.isEmpty else {
-//            return self // no localizations
-//        }
-//
-//        var catalog = self
-//        if let localeCatalogSource = localizations[locale.identifier] ?? localizations[locale.languageCode ?? locale.identifier] {
-//            let lcat = try await localeCatalogSource.fetchCatalog(with: session)
-//            for key in AltCatalog.CodingKeys.allCases {
-//                switch key {
-//                case .name: catalog.name = lcat.name ?? catalog.name
-//                case .identifier: catalog.identifier = lcat.identifier ?? catalog.identifier
-//                case .localizedDescription: catalog.localizedDescription = lcat.localizedDescription ?? catalog.localizedDescription
-//                case .platform: catalog.platform = lcat.platform ?? catalog.platform
-//                case .homepage: catalog.homepage = lcat.homepage ?? catalog.homepage
-//                case .sourceURL: catalog.sourceURL = lcat.sourceURL ?? catalog.sourceURL
-//                case .tintColor: catalog.tintColor = lcat.tintColor ?? catalog.tintColor
-//                case .iconURL: catalog.iconURL = lcat.iconURL ?? catalog.iconURL
-//                case .fundingSources: catalog.fundingSources = lcat.fundingSources ?? catalog.fundingSources
-//                case .baseLocale: catalog.baseLocale = lcat.baseLocale ?? catalog.baseLocale
-//                //case .localizations: catalog.localizations = nil // catalog.name = lcat.name ?? catalog.name
-//                case .news: break // catalog.news = lcat.news ?? catalog.news
-//                case .apps: break // catalog.apps = lcat.apps ?? catalog.apps
-//                }
-//            }
-//
-//            // unlike the top-level catalog metadata properties,
-//            // the catalog's apps and news items do not override anything,
-//            // but instead acts as a complete manifest of the available apps
-//            // for that language/region
-//            if !lcat.apps.isEmpty {
-//                catalog.apps = lcat.apps
-//            }
-//
-//            catalog.news = lcat.news ?? catalog.news
-//            catalog.fundingSources = lcat.fundingSources ?? catalog.fundingSources
-//        }
-//
-//        return catalog
-//    }
-}
-
-// MARK: Utilities
-
-/// The strategy for validating an app's name
-public struct AppNameValidation {
-    /// The default app name validation strategy
-    public static var standard: Self = AppNameValidation()
-
-    /// The characters that are permitted in an app's name
-    public var permittedCharacters: CharacterSet? = CharacterSet.alphanumerics.subtracting(CharacterSet.decimalDigits)
-
-    /// The lengths of the words that are permitted
-    public var wordLengths: [ClosedRange<Int>]? = [3...12, 3...12, 3...12, 3...12]
-
-    /// Validates that the given name satisfies the name validation algorithm
-    public func validate(name: String) throws {
-        let words = name.split(separator: "-", omittingEmptySubsequences: false)
-
-        if let wordLengths = wordLengths {
-            if words.count > wordLengths.count {
-                throw Errors.badWordCount(name, words.count, wordLengths.count)
-            }
-
-            if Set(words).count != words.count {
-                //throw Errors.nonUniqueWords(name)
-            }
-
-            for (word, lengthRange) in zip(words, wordLengths) {
-                if !lengthRange.contains(word.count) {
-                    throw Errors.badWordLength(name, String(word), lengthRange)
-                }
-
-                if let permittedCharacters = permittedCharacters {
-                    for c in word {
-                        for s in c.unicodeScalars {
-                            if !permittedCharacters.contains(s) {
-                                throw Errors.badCharacter(name, c)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    public enum Errors : LocalizedError {
-        case badWordCount(String, Int, Int)
-        case badWordLength(String, String, ClosedRange<Int>)
-        case badCharacter(String, Character)
-        case nonUniqueWords(String)
-
-        public var errorDescription: String? {
-            switch self {
-            case .badWordCount(let appName, let min, _):
-                return "Invalid number of words in name that requires \(min) words separated by a hyphen: \"\(appName)\""
-            case .badWordLength(let appName, _, _):
-                return "Bad word length in name: \"\(appName)\""
-            case .badCharacter(let appName, _):
-                return "Invalid or unsafe character in name: \"\(appName)\""
-            case .nonUniqueWords(let appName):
-                return "Words must be distinct in name: \"\(appName)\""
-            }
-        }
-    }
-}

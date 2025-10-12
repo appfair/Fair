@@ -1,37 +1,6 @@
 import Foundation
 import FairCore
 
-public protocol CatalogSourceOptions {
-    var catalogName: String? { get }
-    var catalogIdentifier: String? { get }
-    var catalogPlatform: String? { get }
-    var catalogLocalizedDescription: String? { get }
-    var catalogSourceURL: String? { get }
-    var catalogIconURL: String? { get }
-    var catalogTintColor: String? { get }
-//    var appLocalizedDescription: [String] { get }
-//    var appVersionDescription: [String] { get }
-//    var appSubtitle: [String] { get }
-//    var appDeveloperName: [String] { get }
-//    var appDownloadURL: [String] { get }
-}
-
-
-extension CatalogSourceOptions {
-    public func defaultValue(from path: KeyPath<CatalogSourceOptions, [String]>, bundleIdentifier: String?) -> String? {
-        let options = self[keyPath: path]
-
-        // if we specified a bundle identifier, return the first element
-        if let bundleIdentifier = bundleIdentifier,
-           let field = options.first(where: { $0.hasPrefix(bundleIdentifier + "=") }) {
-            return field.dropFirst(bundleIdentifier.count + 1).description
-        }
-
-        // otherwise, return the first default with an equals
-        return options.first(where: { $0.contains("=") == false })
-    }
-}
-
 //public final class AppCatalogAPI {
 //    public static let shared = AppCatalogAPI()
 //
@@ -40,7 +9,7 @@ extension CatalogSourceOptions {
 //
 //    //    /// Create a catalog of multiple artifacts.
 //    //    public func catalogApps(urls: [URL], options: SourceOptions? = nil, clearDownload: Bool = true) async throws -> AppCatalog {
-//    //        var items: [AltCatalogItem] = []
+//    //        var items: [AltCatalogAppItem] = []
 //    //        for url in urls {
 //    //            items.append(try await catalogApp(url: url, options: options, clearDownload: clearDownload))
 //    //        }
@@ -48,7 +17,7 @@ extension CatalogSourceOptions {
 //    //    }
 //
 //    /// Create a catalog item for an individual artifact.
-//    public func catalogApp(url: URL, options: CatalogSourceOptions? = nil, clearDownload: Bool = true) async throws -> AltCatalogItem {
+//    public func catalogApp(url: URL, options: CatalogSourceOptions? = nil, clearDownload: Bool = true) async throws -> AltCatalogAppItem {
 //        dbg("url:", url)
 //        let (downloaded, localURL) = url.isFileURL ? (false, url) : (true, try await URLSession.shared.downloadFile(for: URLRequest(url: url)).localURL)
 //        dbg("localURL:", localURL)
@@ -66,7 +35,7 @@ extension CatalogSourceOptions {
 //
 //        let (info, entitlements) = try await AppBundleLoader.loadInfo(fromAppBundle: localURL)
 //
-//        //var item = AltCatalogItem(name: bundleName, bundleIdentifier: bundleID, downloadURL: url)
+//        //var item = AltCatalogAppItem(name: bundleName, bundleIdentifier: bundleID, downloadURL: url)
 //        guard var item = try info.appCatalogInfo(downloadURL: url) else {
 //            throw AppError(NSLocalizedString("Cannot build catalog from Info.plist", bundle: .module, comment: "error message"))
 //        }
@@ -137,15 +106,15 @@ extension CatalogSourceOptions {
 //
 //    }
 //
-//    private func addFailure(to failures: inout [AppCatalogVerifyFailure], app: AltCatalogItem, _ failure: AppCatalogVerifyFailure, msg: ((MessagePayload) -> ())?) {
+//    private func addFailure(to failures: inout [AppCatalogVerifyFailure], app: AltCatalogAppItem, _ failure: AppCatalogVerifyFailure, msg: ((MessagePayload) -> ())?) {
 //        msg?((.warn, ["app verify failure for \(app.downloadURL?.absoluteString ?? "nourl"): \(failure.type) \(failure.message)"]))
 //        failures.append(failure)
 //    }
 //
 //
-//    /// Verified that the information in the given ``AltCatalogItem`` is valid for
+//    /// Verified that the information in the given ``AltCatalogAppItem`` is valid for
 //    /// the resource at the given URL.
-//    public func verifyAppItem(app: AltCatalogItem, catalogURL: URL?, msg: ((MessagePayload) -> ())? = nil) async throws -> AppCatalogVerifyResult {
+//    public func verifyAppItem(app: AltCatalogAppItem, catalogURL: URL?, msg: ((MessagePayload) -> ())? = nil) async throws -> AppCatalogVerifyResult {
 //        var failures: [AppCatalogVerifyFailure] = []
 //
 //        if app.sha256 == nil {
@@ -173,7 +142,7 @@ extension CatalogSourceOptions {
 //        return AppCatalogVerifyResult(app: app, failures: failures.isEmpty ? nil : failures)
 //    }
 //
-//    func validateArtifact(app: AltCatalogItem, file: URL, msg: ((MessagePayload) -> ())? = nil) async -> [AppCatalogVerifyFailure] {
+//    func validateArtifact(app: AltCatalogAppItem, file: URL, msg: ((MessagePayload) -> ())? = nil) async -> [AppCatalogVerifyFailure] {
 //        var failures: [AppCatalogVerifyFailure] = []
 //
 //        if !file.isFileURL || !FileManager.default.isReadableFile(atPath: file.path) {
@@ -267,9 +236,9 @@ extension CatalogSourceOptions {
 //        return failures
 //    }
 //
-//    /// A single `AltCatalogItem` entry from a catalog along with a list of validation failures
+//    /// A single `AltCatalogAppItem` entry from a catalog along with a list of validation failures
 //    public struct AppCatalogVerifyResult : Codable {
-//        public var app: AltCatalogItem
+//        public var app: AltCatalogAppItem
 //        public var failures: [AppCatalogVerifyFailure]?
 //    }
 //

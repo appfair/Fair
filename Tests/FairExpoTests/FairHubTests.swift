@@ -223,7 +223,7 @@ final class FairHubTests: XCTestCase {
 //    }
 
 //    func testIngestCatalogData() throws {
-//        var app = AltCatalogItem(name: "X", bundleIdentifier: "X", downloadURL: URL(string: "about:blank")!)
+//        var app = AltCatalogAppItem(name: "X", bundleIdentifier: "X", downloadURL: URL(string: "about:blank")!)
 //        XCTAssertTrue(try app.ingest(json: #"```{ "localizedDescription": "XYZ" }```"#))
 //        XCTAssertEqual("XYZ", app.localizedDescription)
 //        XCTAssertTrue(try app.ingest(json: #"```json { "localizedDescription": "ABC" }```"#))
@@ -263,7 +263,7 @@ final class FairHubTests: XCTestCase {
 //        dbg("created app casks catalog count:", ids.count, "size:", try? catalog.prettyJSON.count.localizedByteCount())
 //    }
 //
-//    @discardableResult private func checkApp(_ id: String, catalog: AppCatalog, fundingPlatform: AppFundingPlatform? = nil) -> AltCatalogItem? {
+//    @discardableResult private func checkApp(_ id: String, catalog: AppCatalog, fundingPlatform: AppFundingPlatform? = nil) -> AltCatalogAppItem? {
 //        guard let app = catalog.apps.first(where: { $0.bundleIdentifier == id }) else {
 //            XCTFail("no app \(id) found in app list: \(catalog.apps.map(\.bundleIdentifier))")
 //            return nil
@@ -430,7 +430,7 @@ final class FairHubTests: XCTestCase {
         seal.permissions = []
         XCTAssertEqual("bJwxJc1P3ebSID2jztUZ/6BKnmrl6eE4uU8wGbsS5dw=", try sig(), "signature on empty array should differ from null")
 
-//        seal.appSource = AltCatalogItem(name: "App Name", bundleIdentifier: "app.appName", downloadURL: URL(string: "about:blank")!)
+//        seal.appSource = AltCatalogAppItem(name: "App Name", bundleIdentifier: "app.appName", downloadURL: URL(string: "about:blank")!)
 //        XCTAssertEqual("+arE45SfHJamOXtDvrT3lwB4tcSOogebqbJl2X0/d6Y=", try sig(), "seal with catalog information should be consistent")
 
     }

@@ -27,7 +27,7 @@ public struct FairSeal : Codable, JSONSignable {
     public internal(set) var generatorVersion: AppVersion?
 
     /// The AppSource metadata from `App.yml` and `Info.plist`
-    public var appSource: AltCatalogItem?
+    public var appSource: AltCatalogAppItem?
     /// The sealed assets
     public var assets: [Asset]?
     /// The size of the artifact's executable binary
@@ -61,7 +61,7 @@ public struct FairSeal : Codable, JSONSignable {
         set { signature = newValue }
     }
 
-    public init(metadata: JSON?, assets: [Asset]? = nil, permissions: [AppPermission]? = nil, appSource: AltCatalogItem? = nil, coreSize: Int? = nil, tint: String? = nil) {
+    public init(metadata: JSON?, assets: [Asset]? = nil, permissions: [AppPermission]? = nil, appSource: AltCatalogAppItem? = nil, coreSize: Int? = nil, tint: String? = nil) {
         self.metadata = metadata
         self.generatorVersion = Bundle.fairCoreVersion
         //self.fairsealVersion = Version.allCases.last!

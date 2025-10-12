@@ -201,6 +201,45 @@ extension EndpointService {
     }
 }
 
+
+/// A response that returns results in batches with a cursor
+public protocol CursoredAPIResponse {
+    /// Whether there are more pages to fetch or not
+    var hasNextPage: Bool { get }
+    /// The cursor to use to continue pagination
+    var endCursor: GraphQLCursor? { get }
+    /// The number of elements in this response batch
+    var elementCount: Int { get }
+}
+
+
+/// In the common case of a result type that is in `Either<Error>.Or<Result>`, use the success value as the success
+extension Either.Or : CursoredAPIResponse where A : Error, B : CursoredAPIResponse {
+    public var elementCount: Int {
+        result.successValue?.elementCount ?? 0
+    }
+
+    public var hasNextPage: Bool {
+        result.successValue?.hasNextPage == true
+    }
+
+    /// Passes the cursor check through to the success value
+    public var endCursor: GraphQLCursor? {
+        result.successValue?.endCursor
+    }
+}
+
+/// A response from an API that incudes the ability to move through pages.
+public protocol CursoredAPIRequest : APIRequest where Response : CursoredAPIResponse {
+    /// The optional `endCursor` for the paginated request.
+    ///
+    /// This property matches the ability of `gh api graphql --paginate` to
+    /// automatically traverse multiple pages as long as there is a `endCursor` variable.
+    var endCursor: GraphQLCursor? { get set }
+}
+
+
+
 extension Either.Or where A : Error {
     /// Transforms `Either<Error>.Or<A>` into `Result<A, Error>`
     public var result: Result<B, A> {
@@ -220,3 +259,70 @@ extension Either.Or where A : Error {
 //    }
 //}
 
+
+
+
+// MARK: Utilities
+
+/// The strategy for validating an app's name
+public struct AppNameValidation {
+    /// The default app name validation strategy
+    public static var standard: Self = AppNameValidation()
+
+    /// The characters that are permitted in an app's name
+    public var permittedCharacters: CharacterSet? = CharacterSet.alphanumerics.subtracting(CharacterSet.decimalDigits)
+
+    /// The lengths of the words that are permitted
+    public var wordLengths: [ClosedRange<Int>]? = [3...12, 3...12, 3...12, 3...12]
+
+    /// Validates that the given name satisfies the name validation algorithm
+    public func validate(name: String) throws {
+        let words = name.split(separator: "-", omittingEmptySubsequences: false)
+
+        if let wordLengths = wordLengths {
+            if words.count > wordLengths.count {
+                throw Errors.badWordCount(name, words.count, wordLengths.count)
+            }
+
+            if Set(words).count != words.count {
+                //throw Errors.nonUniqueWords(name)
+            }
+
+            for (word, lengthRange) in zip(words, wordLengths) {
+                if !lengthRange.contains(word.count) {
+                    throw Errors.badWordLength(name, String(word), lengthRange)
+                }
+
+                if let permittedCharacters = permittedCharacters {
+                    for c in word {
+                        for s in c.unicodeScalars {
+                            if !permittedCharacters.contains(s) {
+                                throw Errors.badCharacter(name, c)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public enum Errors : LocalizedError {
+        case badWordCount(String, Int, Int)
+        case badWordLength(String, String, ClosedRange<Int>)
+        case badCharacter(String, Character)
+        case nonUniqueWords(String)
+
+        public var errorDescription: String? {
+            switch self {
+            case .badWordCount(let appName, let min, _):
+                return "Invalid number of words in name that requires \(min) words separated by a hyphen: \"\(appName)\""
+            case .badWordLength(let appName, _, _):
+                return "Bad word length in name: \"\(appName)\""
+            case .badCharacter(let appName, _):
+                return "Invalid or unsafe character in name: \"\(appName)\""
+            case .nonUniqueWords(let appName):
+                return "Words must be distinct in name: \"\(appName)\""
+            }
+        }
+    }
+}
