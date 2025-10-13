@@ -82,7 +82,7 @@ jobs:
       - name: Install swiftly
         run: brew install swiftly
       - name: Install Swift 6.2 host toolchain
-        run: swiftly install 6.2.0
+        run: swiftly init --skip-install --assume-yes --verbose && swiftly install 6.2.0
       - name: Install Static Linux SDK
         run: swift sdk install https://download.swift.org/swift-6.2-release/static-sdk/swift-6.2-RELEASE/swift-6.2-RELEASE_static-linux-0.0.1.artifactbundle.tar.gz --checksum d2225840e592389ca517bbf71652f7003dbf45ac35d1e57d98b9250368769378
       - name: Package fairtool
