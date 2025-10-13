@@ -220,7 +220,7 @@ final class FairCommandTests: XCTestCase {
 //    }
 
     func testSourceCreateCommand() async throws {
-        let args = ["--token", "Tune-Out", "--version", "1.0.2"]
+        let args = ["--token", "Tune-Out", "--version", "1.0.2", "--no-upload", "--no-overwrite"]
         let result = try await runTool(SourceCommand.configuration, SourceCommand.CreateCommand.configuration, args: Array(args))
 
         let output = result.output.joined()
