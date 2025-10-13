@@ -28,13 +28,16 @@ done
 # make a shell script that launches the right binary
 cat > fairtool-bin/fairtool << "EOF"
 #!/bin/bash
+# This scipt invokes the tool named after the script
+# in the appropriate OS and architecture sub-folder
 set -e
-FOLDER="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-OS=$(uname -s)
-ARCH=$(uname -m)
-FAIRTOOL="${FOLDER}"/"${OS}"/"${ARCH}"/fairtool
-if [ "${OS}" = "Darwin" ]; then xattr -c "${FAIRTOOL}"; fi
-"${FAIRTOOL}" "${@}"
+TOOLNAME="$(basename "${BASH_SOURCE[0]}")"
+TOOLDIR="$(dirname "${BASH_SOURCE[0]}")"
+OS="$(uname -s)"
+ARCH="$(uname -m)"
+PROGRAM="${TOOLDIR}"/"${OS}"/"${ARCH}"/"${TOOLNAME}"
+if [ "${OS}" = "Darwin" ]; then xattr -c "${PROGRAM}"; fi
+"${PROGRAM}" "${@}"
 EOF
 chmod +x fairtool-bin/fairtool
 
