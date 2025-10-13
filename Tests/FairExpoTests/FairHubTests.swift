@@ -126,7 +126,7 @@ final class FairHubTests: XCTestCase {
 
     func testFetchCommitQuery() async throws {
         let hub = try Self.hub(skipNoAuth: true)
-        let response = try await hub.request(FairHub.GetCommitQuery(owner: "fair-ground", name: "Fair", ref: "93d86ba5884772c8ef189bead1ca131bb11b90f2")).get().data
+        let response = try await hub.request(FairHub.GetCommitQuery(owner: "appfair", name: "Fair", ref: "93d86ba5884772c8ef189bead1ca131bb11b90f2")).get().data
 
         guard let sig = response.repository.object.signature else {
             return XCTFail("no signature in response")

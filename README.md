@@ -1,71 +1,16 @@
 The `fairtool` is a cross-platform (Linux & macOS) command-line utility for 
 managing an ecosystem of apps.
 It is powered by the Fair package, which is a zero-dependency 
-cross-platform (Linux, macOS, & iOS) set of Swift 5.6 modules.
+cross-platform (Linux, macOS, & iOS) set of Swift 5 modules.
 
 The Fair package is used to create and maintain app distribution networks such as 
-[appfair.net](https://appfair.net), as well as the end-user applications
-that utilize them such as the [App Fair.app](https://appfair.app).
-
-- [fairtool](#fairtool)
-  - [Installation](#fairtool)
-  - [Display app info](#fairtool-app-info-fileapp)
-  - [JSON Output](#fairtool-json-output)
-  - [Creating an App Source Catalog](#fairtool-source-create)
-  - [Verifying an App against a Source Catalog](#fairtool-source-verify)
-- [Fair Swift Modules](#fair-swift-modules)
-  - [FairCore](#faircore)
-  - [FairApp](#fairapp)
-  - [FairExpo](#fairexpo)
-  - [FairKit](#fairkit)
-- [Swift Package Manager](#swift-package-manager)
-- [Roadmap](#roadmap)
+[appfair.org](https://appfair.org).
 
 ## fairtool
 
 The functionality of the `Fair` module can best be illustrated by the
 capabilities of the `fairtool`, which is a command-line utility for
-macOS (12+) and Linux. The easiest way to get started with the
-utility for [Homebrew](https://brew.sh) users is to run the commands:
-
-```shell
-% brew install fair-ground/tool/fairtool
-
-==> Tapping fair-ground/tool
-==> Downloading https://github.com/fair-ground/Fair/releases/download/0.4.51/fai
-==> Installing fairtool from fair-ground/tool
-==> Pouring fairtool-0.4.51.arm64_monterey.bottle.tar.gz
-🍺  /opt/homebrew/Cellar/fairtool/0.4.51: 6 files, 10.4MB
-
-% fairtool version
-
-fairtool 0.4.51
-```
-
-Alternatively, if you have a Swift 5.6 compiler installed,
-you can build and run from the source:
-
-```shell
-% git clone https://github.com/fair-ground/Fair.git
-
-Cloning into 'Fair'...
-remote: Enumerating objects: 43471, done.
-remote: Counting objects: 100% (4455/4455), done.
-remote: Compressing objects: 100% (525/525), done.
-remote: Total 43471 (delta 3755), reused 4454 (delta 3754), pack-reused 39016
-Receiving objects: 100% (43471/43471), 12.90 MiB | 13.17 MiB/s, done.
-Resolving deltas: 100% (39783/39783), done.
-
-% cd Fair
-
-% swift run fairtool version
-
-Building for debugging...
-[61/61] Linking fairtool
-Build complete! (9.94s)
-
-fairtool 0.4.52
-```
+macOS (15+) and Linux.
 
 ### fairtool artifact info _file_.app
 
@@ -356,7 +301,6 @@ An example of the catalog output is as follows:
     }
   ]
 }
-
 ```
 
 #### Default properties for source create
@@ -457,7 +401,6 @@ sources of metadata.
     }
   ]
 }
-
 ```
 
 
@@ -510,24 +453,6 @@ would look like:
 ]
 ```
 
-
-#### App Source Catalog
-
-The format of the catalog and the meaning of the various properties is described
-at [https://appfair.net/#app-source-catalog](https://appfair.net/#app-source-catalog).
-
-
-### fairtool online 
-
-An experimental web service with a subset of the 
-fairtool's functionality is available at:
-[https://fairtool.herokuapp.com](https://fairtool.herokuapp.com).
-
-This service can be used to inspect the properties of `.app` `.zip` and `.ipa`
-URLs online, as well as generate default catalog entries for
-application artifacts.
-
-
 ## Fair Swift Modules
 
 The `fairtool` is powered by the `Fair` package, which is a
@@ -546,22 +471,6 @@ FairCore also contains utilities for
 and 
 [XML parsing](https://fair-ground.github.io/Fair/documentation/faircore/xmlnode).
 
-See the [documentation for FairCore](https://fair-ground.github.io/Fair/documentation/faircore/).
-
-### FairApp
-
-The `FairApp` module contains the necessary functionality for
-building and distributing an app on a fair ground such as
-[appfair.net](https://appfair.net). `FairApp` depends on `FairCore`.
-
-Important types are
-[AppCatalog](https://fair-ground.github.io/Fair/documentation/fairapp/appcatalog),
-which is a serialized form of the [App Source Catalog](#app-source-catalog) format,
-[AppBundle](https://fair-ground.github.io/Fair/documentation/fairapp/appbundle),
-which is an abstraction of the packing of an iOS or macOS app.
-
-See the [documentation for FairApp](https://fair-ground.github.io/Fair/documentation/fairapp/).
-
 ### FairExpo
 
 The `FairExpo` module provides a cross-platform set of networking
@@ -572,55 +481,32 @@ getting metadata from the
 and creating and verifying App Source catalogs with the
 [https://fair-ground.github.io/Fair/documentation/fairexpo/appcatalogapi](AppCatalogAPI).
 
- `FairExpo` depends on `FairApp`.
+ `FairExpo` depends on `FairCore`.
  
-See the [documentation for FairExpo](https://fair-ground.github.io/Fair/documentation/fairexpo/).
-
-### FairKit
-
-The `FairKit` module contains optional SwiftUI Views and enhancements,
-such as a SwiftUI [WebView](https://fair-ground.github.io/Fair/documentation/fairkit/webview).
-
- `FairKit` depends on `FairApp`.
-
-See the [documentation for FairKit](https://fair-ground.github.io/Fair/documentation/fairkit/).
-
-
 ## Swift Package Manager
 
 In order to add the Fair module to an existing package named "App",
 
 
 ```swift
-// swift-tools-version: 5.6
-// The swift-tools-version declares the minimum version of Swift required to build this package.
-
+// swift-tools-version: 5.10
 import PackageDescription
 
 let package = Package(
     name: "App",
-    platforms: [ .macOS(.v12), .iOS(.v15) ],
+    platforms: [ .macOS(.v15), .iOS(.v17) ],
     products: [
-        // Products define the executables and libraries a package produces, and make them visible to other packages.
-        .library(
-            name: "App",
-            targets: ["App"]),
+        .library(name: "App", targets: ["App"]),
     ],
     dependencies: [
-        // Dependencies declare other packages that this package depends on.
-        // .package(url: /* package url */, from: "1.0.0"),
-        .package(url: "https://github.com/fair-ground/Fair", from: "0.5.0"), 
+        .package(url: "https://github.com/appfair/Fair", "0.9.0"..<"2.0.0"), 
     ],
     targets: [
         .target(name: "App", dependencies: [
-            // platform-native support for Fair apps (macOS, iOS, Linux)
-            .product(name: "FairApp", package: "Fair"),
-            // low-level data structures and utilities (macOS, iOS, Linux)
+            // low-level data structures and utilities
             .product(name: "FairCore", package: "Fair"),
-            // optional networking utilities (macOS, iOS, Linux)
+            // optional catalog utilities
             .product(name: "FairExpo", package: "Fair"),
-            // optional SwiftUI enhancements (macOS, iOS)
-            .product(name: "FairKit", package: "Fair"),
         ]),
         .testTarget(name: "AppTests", dependencies: ["App"]),
     ]
