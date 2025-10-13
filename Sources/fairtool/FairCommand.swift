@@ -291,7 +291,7 @@ extension FairCommand {
             func compareScaffold(project projectSource: String, path: String, afterLine guardLine: String? = nil) throws {
                 msg(.debug, "checking:", path, "against base path:", validateOptions.base)
                 guard let scaffoldURL = basePathURL(path: path) else {
-                    throw CocoaError(.fileReadNoSuchFile)
+                    throw CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey: path])
                 }
 
                 let scaffoldSource = try String(contentsOf: scaffoldURL, encoding: .utf8)

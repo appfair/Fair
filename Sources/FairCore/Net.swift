@@ -161,7 +161,7 @@ extension URLResponse {
         public let url: URL?
         //public let response: HTTPURLResponse
 
-        public var failureReason: String? {
+        public var errorDescription: String? {
             //NSLocalizedString("Invalud Cide", bundle: .module, comment: "invalid code error")
             "Invalid HTTP Response: \(code) for URL: \(url?.absoluteString ?? "none")"
         }

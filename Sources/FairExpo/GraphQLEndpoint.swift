@@ -42,7 +42,7 @@ public struct GraphQLError : Decodable, LocalizedError {
     public var path: [String]? // e.g., ["repository"] or ["query FindPullRequests","repository","pullRequests","states"]
     public var documentation_url: URL?
 
-    public var failureReason: String? { message }
+    public var errorDescription: String? { message }
 }
 
 /// A set of one or more errors returned by the GraphQL API.
@@ -65,7 +65,7 @@ public struct GraphQLRequestFailure : Error, RawDecodable {
 }
 
 extension GraphQLRequestFailure : LocalizedError {
-    public var failureReason: String? {
+    public var errorDescription: String? {
         firstFailureReason
     }
 

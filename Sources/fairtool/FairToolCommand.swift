@@ -332,20 +332,20 @@ public struct SourceOptions: ParsableArguments {
     @Option(help: ArgumentHelp("The name of the developer of the catalog", valueName: "name"))
     public var developerName: String = "The App Fair Project"
 
-    @Option(help: ArgumentHelp("The base URL of the hub repository", valueName: "url"))
-    public var hubRepository: String = "https://github.com"
-
-    @Option(help: ArgumentHelp("The base URL of the hub raw content", valueName: "url"))
-    public var hubContent: String = "https://raw.githubusercontent.com"
-
     @Option(help: ArgumentHelp("The name of the catalog", valueName: "name"))
     public var catalogName: String = "The App Fair Project"
+
+    @Option(help: ArgumentHelp("The base URL of the hub repository", valueName: "url"))
+    public var hubRepository: String = "https://delivery.appfair.net" // "https://github.com/appfair"
+
+    @Option(help: ArgumentHelp("The base URL of the hub raw content", valueName: "url"))
+    public var hubContent: String = "https://assets.appfair.net" // "https://raw.githubusercontent.com/appfair"
 
     @Option(help: ArgumentHelp("The subtitle of the catalog", valueName: "name"))
     public var catalogSubtitle: String = "The free and open-source app catalog"
 
     @Option(help: ArgumentHelp("The description for this catalog", valueName: "desc"))
-    public var catalogDescription: String = "This catalog contains apps that have been built by the App Fair Project, a non-commercial app marketplace."
+    public var catalogDescription: String = "This catalog contains free and open-source apps distributed through the App Fair Project."
 
     @Option(help: ArgumentHelp("The icon URL of the catalog", valueName: "url"))
     public var catalogIconURL: String = "https://appfair.org/appfair-icon.png"

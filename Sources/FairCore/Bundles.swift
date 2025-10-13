@@ -67,7 +67,7 @@ extension Bundle {
     /// Returns all the URLs in the given asset path of the bundle
     public func assetPaths(in folder: String, includeLinks: Bool, includeFolders: Bool) throws -> [URL] {
         guard let bundleURL = url(forResource: folder, withExtension: nil, subdirectory: "Assets") else {
-            throw CocoaError(.fileReadNoSuchFile)
+            throw CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey: folder])
         }
 
         return try FileManager.default.deepContents(of: bundleURL, includeLinks: includeLinks, includeFolders: includeFolders)
@@ -76,7 +76,7 @@ extension Bundle {
     /// Loads the resource with the given name
     public func loadResource(named name: String, options: Data.ReadingOptions = .mappedIfSafe) throws -> Data {
         guard let url = url(forResource: name, withExtension: nil, subdirectory: nil) else {
-            throw CocoaError(.fileReadNoSuchFile)
+            throw CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey: name])
         }
         return try Data(contentsOf: url, options: options)
     }
@@ -84,7 +84,7 @@ extension Bundle {
     /// Loads the resource with the given name from the `Assets` resource path, which can be used to store non-flattened resource hierarchies
     public func loadBundleAsset(named name: String, options: Data.ReadingOptions = .mappedIfSafe) throws -> Data {
         guard let url = url(forResource: name, withExtension: nil, subdirectory: "Assets") else {
-            throw CocoaError(.fileReadNoSuchFile)
+            throw CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey: name])
         }
         return try Data(contentsOf: url, options: options)
     }
@@ -524,7 +524,7 @@ extension FileManager {
         // FileManager.DirectoryEnumerationOptions.producesRelativePathURLs
         // but it is not available on Linux, so we need to synthesize the relative URLs ourselves
         guard let walker = self.enumerator(at: parentFolder, includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey], options: []) else {
-            throw CocoaError(.fileReadNoSuchFile)
+            throw CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey: parentFolder.path])
         }
 
         var paths: [URL] = []
@@ -741,7 +741,7 @@ extension URL {
             #endif
 
             guard let walker = fm.enumerator(at: self, includingPropertiesForKeys: keys, options: mask) else {
-                throw CocoaError(.fileReadNoSuchFile)
+                throw CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey: self.path])
             }
 
             var paths: [URL] = []
@@ -922,7 +922,7 @@ public class FileSystemDataWrapper : DataWrapper {
         // try URLSession.shared.fetch(request: URLRequest(url: path)).data
         // SeekableDataHandle(try Data(contentsOf: path), bigEndian: bigEndian)
         if fm.isReadableFile(atPath: path.path) == false {
-            throw CocoaError(.fileReadNoSuchFile)
+            throw CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey: path.path])
         }
         return try SeekableFileHandle(FileHandle(forReadingFrom: path))
     }
@@ -950,6 +950,10 @@ extension FileSystemDataWrapper.Path : DataWrapperPath {
 
     public var pathIsDirectory: Bool {
         (try? self.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+    }
+
+    public var pathIsRegularFile: Bool {
+        (try? self.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) ?? false
     }
 
     public var pathIsLink: Bool {
@@ -1044,14 +1048,14 @@ public class ZipArchiveDataWrapper : DataWrapper {
 
     public func seekableData(at path: Path) throws -> SeekableData {
         guard let entry = path.entry else {
-            throw CocoaError(.fileReadNoSuchFile)
+            throw CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey: path.path])
         }
         return SeekableDataHandle(try archive.extractData(from: entry))
     }
 
     public func data(atPath: String) throws -> Data {
         guard let path = paths.filter( { $0.pathName == atPath } ).first else {
-            throw CocoaError(.fileReadNoSuchFile)
+            throw CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey: atPath])
         }
         return try seekableData(at: path).readData(ofLength: nil)
     }

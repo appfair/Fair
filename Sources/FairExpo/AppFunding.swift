@@ -335,56 +335,56 @@ extension AppFundingLink {
     }
 }
 
-public extension AltCatalogAppItem {
-
-    /// The hyphenated form of this app's name
-    var appNameHyphenated: String {
-        self.name.rehyphenated()
-    }
-
-    /// The official landing page for the app
-    var landingPage: URL? {
-        URL(string: "https://\(appNameHyphenated).github.io/App/")
-    }
-
-    /// Returns the URL to this app's home page
-    var projectURL: URL? {
-        URL(string: "https://github.com/\(appNameHyphenated)/App/")
-    }
-
-    /// The e-mail address for contacting the developer
-    var developerEmail: String? {
-        developerName // TODO: parse out
-    }
-
-    /// Returns the URL to this app's home page
-    var sourceURL: URL? {
-        projectURL?.appendingPathExtension("git")
-    }
-
-    var issuesURL: URL? {
-        URL(string: "issues", relativeTo: projectURL)
-    }
-
-    var discussionsURL: URL? {
-        URL(string: "discussions", relativeTo: projectURL)
-    }
-
-    var stargazersURL: URL? {
-        URL(string: "stargazers", relativeTo: projectURL)
-    }
-
-    var releasesURL: URL? {
-        URL(string: "releases/", relativeTo: projectURL)
-    }
-
-    var developerURL: URL? {
-        queryURL(type: "users", term: developerEmail ?? "")
-    }
-
-    /// Builds a general query
-    private func queryURL(type: String, term: String) -> URL? {
-        URL(string: "https://github.com/search?type=" + type.escapedURLTerm + "&q=" + term.escapedURLTerm)
-    }
-}
+//public extension AltCatalogAppItem {
+//
+//    /// The hyphenated form of this app's name
+//    var appNameHyphenated: String {
+//        self.name.rehyphenated()
+//    }
+//
+//    /// The official landing page for the app
+//    var landingPage: URL? {
+//        URL(string: "https://\(appNameHyphenated).github.io/App/")
+//    }
+//
+//    /// Returns the URL to this app's home page
+//    var projectURL: URL? {
+//        URL(string: "https://github.com/\(appNameHyphenated)/App/")
+//    }
+//
+//    /// The e-mail address for contacting the developer
+//    var developerEmail: String? {
+//        developerName // TODO: parse out
+//    }
+//
+//    /// Returns the URL to this app's home page
+//    var sourceURL: URL? {
+//        projectURL?.appendingPathExtension("git")
+//    }
+//
+//    var issuesURL: URL? {
+//        URL(string: "issues", relativeTo: projectURL)
+//    }
+//
+//    var discussionsURL: URL? {
+//        URL(string: "discussions", relativeTo: projectURL)
+//    }
+//
+//    var stargazersURL: URL? {
+//        URL(string: "stargazers", relativeTo: projectURL)
+//    }
+//
+//    var releasesURL: URL? {
+//        URL(string: "releases/", relativeTo: projectURL)
+//    }
+//
+//    var developerURL: URL? {
+//        queryURL(type: "users", term: developerEmail ?? "")
+//    }
+//
+//    /// Builds a general query
+//    private func queryURL(type: String, term: String) -> URL? {
+//        URL(string: "https://github.com/search?type=" + type.escapedURLTerm + "&q=" + term.escapedURLTerm)
+//    }
+//}
 

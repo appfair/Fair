@@ -733,7 +733,20 @@ extension FileManager {
 
         return childFileURLs
     }
+
+    public func withTemporaryFile<T>(named: String = UUID().uuidString, contents: Data? = nil, perform: (URL) async throws -> T) async throws -> T {
+        let tmpFolder = self.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try self.createDirectory(at: tmpFolder, withIntermediateDirectories: true)
+        defer { try? self.removeItem(at: tmpFolder) }
+        let url = tmpFolder.appendingPathComponent(named)
+        if let contents {
+            try contents.write(to: url)
+        }
+
+        return try await perform(url)
+    }
 }
+
 
 
 extension URL {

@@ -31,14 +31,14 @@ public struct AltStoreService : EndpointService {
     public struct ADPDownloadRequest : APIRequest {
         public typealias Response = ADPProcessResponse
 
-        public let adpID: UUID
+        public let adpID: String
 
-        public init(adpID: UUID) {
+        public init(adpID: String) {
             self.adpID = adpID
         }
 
         public func queryURL(for service: AltStoreService) -> URL {
-            service.endpointBase.appending(components: "adps", adpID.uuidString) // GET
+            service.endpointBase.appending(components: "adps", adpID) // GET
         }
         
         public func postData() throws -> Data? {
@@ -50,9 +50,9 @@ public struct AltStoreService : EndpointService {
     public struct ADPProcessRequest : APIRequest {
         public typealias Response = ADPProcessResponse
 
-        public let adpID: UUID
+        public let adpID: String
 
-        public init(adpID: UUID) {
+        public init(adpID: String) {
             self.adpID = adpID
         }
 
@@ -62,10 +62,62 @@ public struct AltStoreService : EndpointService {
 
         public func postData() throws -> Data? {
             struct Request : Encodable {
-                let adpID: UUID
+                let adpID: String
             }
             return try JSONEncoder().encode(Request(adpID: adpID))
         }
+    }
+    
+    /// Downloads the specified ADPID, optionally requesting that it be processed (in the event of unprocessed or expired downloads) and waiting for the processing for the given amount of time.
+    /// - Parameter adpid: the Altenative Distribution Identifier
+    public func download(adpid: String, requestProcessingTimeout: TimeInterval? = 60 * 60 * 10, logger: (String) -> ()) async throws -> URL {
+        var dateNow = Date.now
+        let expiration = dateNow.addingTimeInterval(requestProcessingTimeout ?? 0)
+        while dateNow <= expiration {
+            defer { dateNow = Date.now }
+            do {
+                let downloadResponse = try await request(AltStoreService.ADPDownloadRequest(adpID: adpid))
+
+                // 404 will be raised if it has never seen an ADP ID
+
+                if downloadResponse.status == "inProgress" {
+                    logger("processing for adpid=\(adpid) inProgress, waiting…")
+                    try await Task.sleep(interval: 10)
+                    continue
+                } else if downloadResponse.downloadExpired == true {
+                    // request processing, then continue to wait…
+                    logger("download expired for adpid=\(adpid), requesting re-download…")
+                    let request = try await request(AltStoreService.ADPProcessRequest(adpID: adpid))
+                    try await Task.sleep(interval: 10)
+                    continue
+                }
+
+                guard let downloadURL = downloadResponse.downloadURL else {
+                    throw AppError("ADP manifest.json was not found in releases and could not download for id \(adpid) with response: \(downloadResponse)")
+                }
+
+                // download the ADP zip
+                let (downloadFile, response) = try await URLSession.shared.downloadFile(for: URLRequest(url: downloadURL, cachePolicy: .returnCacheDataElseLoad))
+                try response.validateHTTPCode()
+
+                return downloadFile
+            } catch let error as URLResponse.InvalidHTTPCode {
+                if error.code == 404 {
+                    // 404 error means that the ADPID hasn't been seen, or has been forgotten
+                    // try requesting the download
+                    logger("download unknown for adpid=\(adpid), requesting processing…")
+                    // TODO: these seem to trigger a 202 with no data when processing is initiated
+                    let request = try? await request(AltStoreService.ADPProcessRequest(adpID: adpid))
+                    try await Task.sleep(interval: 10)
+                    continue
+                } else {
+                    // all other errors bubble up
+                    throw error
+                }
+            }
+        }
+
+        throw AppError("Could not obtain a download URL for ADP id \(adpid)")
     }
 
     /// Examples:
@@ -73,7 +125,7 @@ public struct AltStoreService : EndpointService {
     ///`{"operationID":"18351111388","updated":"2025-10-08T16:15:14Z","created":"2025-10-08T16:15:11Z","status":"inProgress","id":"25612dfb-12ce-41d5-819c-354de71c23f8"}`
     /// `{"downloadExpired":false,"downloadExpiration":"2025-10-13T16:18:03Z","id":"25612dfb-12ce-41d5-819c-354de71c23f8","operationID":"18351111388","updated":"2025-10-08T16:18:13Z","status":"success","downloadURL":"https://productionresultssa5.blob.core.windows.net/actions-results/a764e296-d4de-4ecb-bd04-791a873c4dcc/…","created":"2025-10-08T16:15:11Z"}`
     public struct ADPProcessResponse : Codable {
-        public let id: UUID
+        public let id: String
         public let status: String? // e.g., "inProgress" or "success"
         public let downloadExpiration: Date?
         public let downloadExpired: Bool?

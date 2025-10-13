@@ -220,20 +220,12 @@ final class FairCommandTests: XCTestCase {
 //    }
 
     func testSourceCreateCommand() async throws {
-        //let path = try Self.appDownloadURL(for: "Tune-Out", version: "1.0.2", platform: .iOS)
-
-        let netPath = "https://github.com/appfair/Tune-Out/archive/refs/tags/1.0.2.zip"
-        let filePath = "/opt/src/github/skiptools/Tune-Out"
-
-        var args = [netPath]
-        if FileManager.default.fileExists(atPath: filePath) {
-            args.append(filePath)
-        }
-
+        let args = ["--token", "Tune-Out", "--version", "1.0.2"]
         let result = try await runTool(SourceCommand.configuration, SourceCommand.CreateCommand.configuration, args: Array(args))
 
         let output = result.output.joined()
         dbg("output:", output)
+
         //let catalog: AltCatalog = try SourceCommand.CreateCommand.Output(fromJSON: output.utf8Data, dateDecodingStrategy: .iso8601)
         //dbg("catalog:", try? catalog.toJSON(outputFormatting: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes], dateEncodingStrategy: .iso8601).utf8String)
     }

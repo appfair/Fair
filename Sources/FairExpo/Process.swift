@@ -28,8 +28,12 @@ public struct CommandResult {
 }
 
 extension CommandResult : LocalizedError {
-    public var failureReason: String? {
-        return "The command \"\(url.lastPathComponent)\" exited with code: \(self.terminationStatus)"
+    public var errorDescription: String? {
+        var msg = "The command \"\(url.lastPathComponent)\" exited with code: \(self.terminationStatus)"
+        if let errString = String(data: stderr, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines), !errString.isEmpty {
+            msg += " message: \(errString)"
+        }
+        return msg
     }
 }
 
@@ -66,11 +70,30 @@ extension Process {
 //        #endif
     }
 
+    public static func findCommandInPath(toolName: String, withAdditionalPaths extraPATH: [String] = []) throws -> URL {
+        let env = ProcessInfo.processInfo.environment
+        let path = env["PATH"] ?? ""
+        let pathParts = path.split(separator: ":", omittingEmptySubsequences: true).map(String.init)
+        for pathPart in pathParts + extraPATH {
+            let dir = URL(fileURLWithPath: pathPart, isDirectory: true)
+            let exePath = URL(fileURLWithPath: toolName, relativeTo: dir)
+            if FileManager.default.isExecutableFile(atPath: exePath.path) {
+                return exePath
+            }
+        }
+
+        struct ToolNotFoundError : LocalizedError {
+            var errorDescription: String?
+        }
+        throw ToolNotFoundError(errorDescription: "An executable tool named '\(toolName)' could not be found in the PATH, nor was it specified as part of the command-line flags.")
+    }
+
     /// Invokes a tool with the given arguments
     ///
     /// - TODO: @available(*, deprecated, renamed: "executeAsync")
     public static func executeSync(cmd: String, environment: [String: String] = [:], _ args: [String]) throws -> CommandResult {
-        let executablePath = URL(fileURLWithPath: cmd)
+        // relative paths will be sough in the PATH variable
+        let executablePath = try cmd.hasPrefix("/") ? URL(fileURLWithPath: cmd) : findCommandInPath(toolName: cmd)
         let process = try createProcess(command: executablePath, environment: environment, args: args)
 
         let (stdout, stderr) = (Pipe(), Pipe())

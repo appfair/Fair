@@ -122,7 +122,7 @@ public enum AppBundleErrors : Error, LocalizedError {
     /// The Info.plist is missing from the archive
     case missingInfo
 
-    public var failureReason: String? {
+    public var errorDescription: String? {
         switch self {
         case .missingInfo: return "Missing Info.plist in application bundle"
         }

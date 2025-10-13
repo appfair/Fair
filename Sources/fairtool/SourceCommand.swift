@@ -3,6 +3,7 @@ import FairCore
 import FairExpo
 import ArgumentParser
 
+
 public struct SourceCommand : AsyncParsableCommand {
     public static let experimental = false
     public static var configuration = CommandConfiguration(commandName: "source",
@@ -17,13 +18,28 @@ public struct SourceCommand : AsyncParsableCommand {
     public init() {
     }
 
+    /// Creates an AltStore source from one or more source folders or zip URLs.
+    ///
+    /// Example use: `fairtool source create https://github.com/appfair/Skip-Notes/archive/refs/tags/0.8.6.zip --adpid 412cd63d-180f-4ee0-a06a-accca8fe349e --upload-app-catalog`
     public struct CreateCommand: FairParsableCommand {
         @OptionGroup public var msgOptions: MsgOptions
         @OptionGroup public var outputOptions: OutputOptions
         @OptionGroup public var sourceOptions: SourceOptions
 
-        @Argument(help: ArgumentHelp("Path or url for app release", valueName: "source", visibility: .default))
-        public var sources: [String]
+        @Option(help: ArgumentHelp("The Alternative Distribution Package ID for the release", valueName: "id"))
+        public var adpid: String?
+
+        @Flag(inversion: .prefixedNo, help: ArgumentHelp("Upload the app catalog for a single app GitHub release"))
+        public var upload: Bool = true
+
+        @Flag(inversion: .prefixedNo, help: ArgumentHelp("Whether to overwrite existing catalog uploads"))
+        public var overwrite: Bool = true
+
+        @Option(help: ArgumentHelp("The app token to catalog", valueName: "token"))
+        public var token: String
+
+        @Option(help: ArgumentHelp("The app version to catalog", valueName: "version"))
+        public var version: String
 
         public static var configuration = CommandConfiguration(commandName: "create",
                                                                abstract: "Create a catalog source for the current app",
@@ -47,43 +63,67 @@ public struct SourceCommand : AsyncParsableCommand {
             catalog.iconURL = sourceOptions.catalogIconURL
             catalog.tintColor = sourceOptions.catalogTintColor
 
-            var apps: [AltCatalogAppItem] = []
-            for source in sources {
-                msg(.info, "analyzing source: \(source)")
-                let item = try await createAppItem(path: source)
-                apps.append(item)
+            // old-style way
+//            var apps: [(appToken: String, appItem: AltCatalogAppItem)] = []
+//            for source in sources {
+//                msg(.info, "analyzing source: \(source)")
+//                let item = try await createAppItem(path: source)
+//                apps.append(item)
+//            }
+            let item = try await createAppItem(token: token, version: version)
+            let apps = [item]
+            catalog.apps = apps.map(\.appItem)
+
+            if upload {
+                guard let sourceItem = apps.first, apps.count == 1 else {
+                    throw AppError("Cannot specify --upload-app-catalog with anything but a single app")
+                }
+
+                guard let appVersion = sourceItem.appItem.versions?.first?.version, sourceItem.appItem.versions?.count == 1 else {
+                    throw AppError("Cannot specify --upload-app-catalog with anything but a single app version for \(sourceItem.appToken)")
+                }
+
+                // when there is a single app and we are generating the catalog for just one, change the catalog name and description to just be that of the app itself
+                catalog.name = sourceItem.appItem.name
+                catalog.subtitle = sourceItem.appItem.subtitle
+                catalog.iconURL = sourceItem.appItem.iconURL
+                //catalog.description = sourceItem.appItem.localizedDescription
+                catalog.tintColor = sourceItem.appItem.tintColor
+
+                let json = try outputOptions.writeCatalog(catalog)
+
+                // upload the generated catalog to the GitHub releases
+                _ = try await FileManager.default.withTemporaryFile(named: "altstore.json", contents: json) { path in
+                    try await githubReleaseUpload(appToken: sourceItem.appToken, version: appVersion, paths: [path])
+                }
+            } else {
+                let json = try outputOptions.writeCatalog(catalog)
+                _ = json
             }
-            catalog.apps = apps
-            let json = try outputOptions.writeCatalog(catalog)
-            let _ = json
         }
 
-        func createAppItem(path: String) async throws -> AltCatalogAppItem {
-            let url = URL(fileOrScheme: path)
-            msg(.info, "checking url: \(url.absoluteString)")
+        func createAppItem(token appToken: String, version: String) async throws -> (appToken: String, appItem: AltCatalogAppItem) {
+            guard let repoURL = URL(string: "\(sourceOptions.hubRepository)/\(appToken)") else {
+                throw AppError("Could not create repo URL from: \(appToken)")
+            }
+
+            // e.g.: https://delivert.appfair.net/Tune-Out/archive/refs/tags/1.0.2.zip
+            let sourceArchiveURL = repoURL.appending(path: "archive/refs/tags/\(version).zip")
+
+            msg(.info, "checking sourceArchiveURL: \(sourceArchiveURL.absoluteString)")
             let dataSource: any DataWrapper
             let pathPrefix: String
-            let appToken: String
             let relativePaths: [String] // the paths that will be relative to the pathPrefix
-            if url.isFileURL {
-                // e.g.: /opt/src/github/appfair/Tune-Out
-                dataSource = try FileSystemDataWrapper(root: url)
-                pathPrefix = ""
-                appToken = url.lastPathComponent // e.g., "Tune-Out"
-                relativePaths = dataSource.paths.map(\.pathName)
-            } else {
-                // e.g.: https://github.com/appfair/Tune-Out/archive/refs/tags/1.0.2.zip
-                msg(.info, "downloading url: \(url.absoluteString)")
-                let (localURL, response) = try await prf("download: \(url.absoluteURL)") {
-                    try await URLSession.shared.downloadFile(for: URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad))
-                }
-                try response.validateHTTPCode()
-                dataSource = try ZipArchiveDataWrapper(archive: ZipArchive(url: localURL, accessMode: .read))
-                pathPrefix = (dataSource.paths.first?.pathName ?? "") + "/" // e.g.: "Tune-Out-1.0.2/"
-                relativePaths = dataSource.paths.map(\.pathName).map({ $0.dropFirst(pathPrefix.count).description })
 
-                appToken = url.pathComponents.filter({ !$0.isEmpty }).dropFirst(2).first ?? "Unknown" // e.g. "https://github.com/appfair/Tune-Out" -> "Tune-Out"
+            msg(.info, "downloading sourceArchiveURL: \(sourceArchiveURL.absoluteString)")
+            let (localURL, response) = try await prf("download: \(sourceArchiveURL.absoluteURL)") {
+                try await URLSession.shared.downloadFile(for: URLRequest(url: sourceArchiveURL, cachePolicy: .returnCacheDataElseLoad))
             }
+
+            try response.validateHTTPCode()
+            dataSource = try ZipArchiveDataWrapper(archive: ZipArchive(url: localURL, accessMode: .read))
+            pathPrefix = (dataSource.paths.first?.pathName ?? "") + "/" // e.g.: "Tune-Out-1.0.2/"
+            relativePaths = dataSource.paths.map(\.pathName).map({ $0.dropFirst(pathPrefix.count).description })
 
             let envFileData = try dataSource.data(atPath: pathPrefix + "Skip.env")
             let envFile = try EnvFile(data: envFileData)
@@ -107,10 +147,7 @@ public struct SourceCommand : AsyncParsableCommand {
             //    throw AppError("Could not load app token from from bundleIdentifier in Skip.env")
             //}
 
-            guard let repoURL = URL(string: "\(sourceOptions.hubRepository)/\(sourceOptions.fairgroundName)/\(appToken)") else {
-                throw AppError("Could not create repo URL from: \(appToken)")
-            }
-            guard let rawContentURL = URL(string: "\(sourceOptions.hubContent)/\(sourceOptions.fairgroundName)/\(appToken)/refs/tags/\(marketingVersion)") else {
+            guard let rawContentURL = URL(string: "\(sourceOptions.hubContent)/\(appToken)/refs/tags/\(marketingVersion)") else {
                 throw AppError("Could not create raw content URL from: \(appToken)")
             }
 
@@ -126,10 +163,41 @@ public struct SourceCommand : AsyncParsableCommand {
 
             let localizedDescription = try loadFastlaneMetadata("description.txt")
             let subtitle = try loadFastlaneMetadata("subtitle.txt")
+            let releaseNotes = try loadFastlaneMetadata("release_notes.txt")
 
             let manifestURL = releaseBaseURL.appending(path: "manifest.json")
-            let manifestData = try await URLSession.shared.fetch(request: URLRequest(url: manifestURL)).data
-            let manifest = try JSONDecoder().decode(ADPManifest.self, from: manifestData)
+            let manifest: ADPManifest
+            let (mdata, mresponse) = try await URLSession.shared.data(for: URLRequest(url: manifestURL))
+            if (mresponse as? HTTPURLResponse)?.statusCode == 404 {
+                // the manifest.json does not yet exist; if we have specifid the ADPID, download it from the AltStore API, extract it, and upload it to the GitHub release
+                guard let adpid = self.adpid else {
+                    throw AppError("ADP manifest.json was not found in releases, and could not be automatically fetched due to lack of adpid argument")
+                }
+
+                msg(.info, "downloading ADP for id \(adpid)")
+                let downloadFile = try await AltStoreService().download(adpid: adpid, logger: { msg(.info, $0) })
+                defer { try? FileManager.default.removeItem(at: downloadFile) }
+
+                let tmpFolder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+
+                try FileManager.default.unzipItem(at: downloadFile, to: tmpFolder)
+                defer { try? FileManager.default.removeItem(at: tmpFolder) }
+
+                // ensure that the manifest data exists in the folder
+                let manifestData = try Data(contentsOf: tmpFolder.appendingPathComponent("manifest.json"))
+                manifest = try JSONDecoder().decode(ADPManifest.self, from: manifestData)
+
+                let adpExtractedPaths = try FileManager.default.enumeratedURLs(of: tmpFolder)
+
+                // now upload the contents of the zip to the GitHub repository
+                let ghOut = try await githubReleaseUpload(appToken: appToken, version: marketingVersion, paths: adpExtractedPaths.filter(\.pathIsRegularFile))
+
+                msg(.info, "gh upload command: \(String(data: ghOut.stdout, encoding: .utf8) ?? "")")
+            } else {
+                try mresponse.validateHTTPCode() // make sure it wasn't some other error
+                manifest = try JSONDecoder().decode(ADPManifest.self, from: mdata)
+            }
+
             let marketplaceID = manifest.appleItemId
 
             if manifest.bundleId != bundleIdentifier {
@@ -149,12 +217,14 @@ public struct SourceCommand : AsyncParsableCommand {
                 let lastAssetBase = lastAssetPath.split(separator: ".").dropLast().joined(separator: ".")
                 assetURLs[lastAssetBase] = releaseBaseURL.appending(path: lastAssetPath).absoluteString
             }
+
+            // the app version seems to require a size, but that doesn't make sense for a PAL catalog with the separate ADP segments; so just take the largest size of all the variants
+            let maxAssetSize = manifest.variants.map(\.variantDetails.uncompressedSize).max() ?? 0 // FIXME: should this be compressedSize instead?
+
             let minOSVersion: String? = nil // TODO: get from Info.plist
             let maxOSVersion: String? = nil // TODO: get from Info.plist
 
-            let releaseNotes: String? = nil // TODO: get release notes somehow
-
-            let appVersion = AltCatalogAppItemVersion(version: marketingVersion, buildVersion: projectVersion, date: releaseDate, localizedDescription: releaseNotes, downloadURL: manifestURL.absoluteString, assetURLs: assetURLs, minOSVersion: minOSVersion, maxOSVersion: maxOSVersion)
+            let appVersion = AltCatalogAppItemVersion(version: marketingVersion, buildVersion: projectVersion, date: releaseDate, localizedDescription: releaseNotes, downloadURL: manifestURL.absoluteString, size: maxAssetSize, assetURLs: assetURLs, minOSVersion: minOSVersion, maxOSVersion: maxOSVersion)
 
             var appPermissions = AltCatalogAppItemPermissions()
 
@@ -172,7 +242,7 @@ public struct SourceCommand : AsyncParsableCommand {
 
             let entitlementsPlist = try Plist(data: dataSource.data(atPath: pathPrefix + "Darwin/Entitlements.plist"))
             var entitlements: [AltCatalogAppItemPermissions.PermissionEntitlement] = []
-            for (key, value) in entitlementsPlist.rawValue {
+            for (key, _) in entitlementsPlist.rawValue {
                 if let key = key as? String {
                     entitlements.append(.init(name: key))
                 }
@@ -181,7 +251,10 @@ public struct SourceCommand : AsyncParsableCommand {
                 appPermissions.entitlements = entitlements.map({ .init($0) })
             }
 
-            var category: String? // TODO: parse category from Info.plist and map it into https://faq.altstore.io/developers/make-a-source#category-string options: (developer, entertainment, games, lifestyle, other, photo-video, social, utilities)
+            // TODO: parse category from Info.plist and map it into https://faq.altstore.io/developers/make-a-source#category-string
+            // options: developer, entertainment, games, lifestyle, other, photo-video, social, utilities
+            // TODO: also parse the .xcconfig for INFOPLIST_KEY_LSApplicationCategoryType
+            let category: String = "other"
 
             // the convention for the path of the app icon
             //let iconURL = rawContentURL.appending(path: "Darwin/Assets.xcassets/AppIcon.appiconset/AppIcon@3x.png")
@@ -201,7 +274,26 @@ public struct SourceCommand : AsyncParsableCommand {
             let screenshots: AltCatalogAppItem.ScreenshotCollection = .init(["iphone": screenshotURLs.map({ .init($0.absoluteString) })])
 
             let item = AltCatalogAppItem(name: productName, bundleIdentifier: bundleIdentifier, marketplaceID: marketplaceID, developerName: sourceOptions.developerName, subtitle: subtitle, localizedDescription: localizedDescription, iconURL: iconURL?.absoluteString, tintColor: tintColor, category: category, screenshots: screenshots, versions: [appVersion], appPermissions: appPermissions, patreon: nil)
-            return item
+            return (appToken, item)
+        }
+
+        /// Upload the specified file paths to the release for the given appToken and version
+        func githubReleaseUpload(appToken: String, version: String, paths: [URL]) async throws -> CommandResult {
+            // we fork the `gh release upload -R appfair/Tune-Out 1.0.2 files…` for this
+            let githubRepo = sourceOptions.fairgroundName + "/" + appToken
+            var args = ["release", "upload"]
+            if overwrite {
+                args += ["--clobber"]
+            }
+            args += ["-R", githubRepo]
+            args += [version]
+
+            args += paths.map(\.path)
+
+            msg(.info, "uploading to GitHub release for \(appToken)/\(version): \(args)")
+
+            let ghOut = try await Process.exec(cmd: "gh", args: args).expect()
+            return ghOut
         }
     }
 
@@ -240,183 +332,4 @@ public protocol NewsItemFormat {
     var postBody: String? { get }
     var postAppID: String? { get }
     var postURL: String? { get }
-}
-
-extension NewsItemFormat {
-    /// Takes the differences from two catalogs and adds them to the postings with the given formats and limits.
-    /// Also sends out updates to various channels, such as Twitter (experimental) and ATOM (planned)
-//    public func postUpdates(to catalog: inout AppCatalog, with diffs: [AltCatalogAppItem.Diff], twitterAuth: OAuth1.Info? = nil, newsLimit: Int? = nil, tweetLimit: Int? = nil) async throws -> [Tweeter.PostResponse] {
-//        var tweetLimit = tweetLimit ?? .max
-//        var responses: [Tweeter.PostResponse] = []
-//
-//        var news: [AppNewsPost] = catalog.news ?? []
-//        for diff in diffs {
-//            guard let bundleID = diff.new.bundleIdentifier else {
-//                dbg("skipping missing id:", diff.new)
-//                continue
-//            }
-//
-//            let fmt = { (str: String?) in
-//                str?.replacing(variables: [
-//                    "appname": diff.new.name,
-//                    "appname_hyphenated": diff.new.appNameHyphenated,
-//                    "appbundleid": bundleID,
-//                    "apptoken": bundleID, // currently stored in "bundleID", but should it be moved?
-//                    "appversion": diff.new.version,
-//                    "oldappversion": diff.old?.version,
-//                ].compactMapValues({ $0 }))
-//            }
-//
-//            let updatesExistingApp = diff.old != nil
-//
-//            // a unique identifier for the item
-//            let identifier = "release-" + bundleID + "-" + (diff.new.version ?? "new")
-//            let title = fmt(updatesExistingApp ? self.postTitleUpdate : self.postTitle)
-//            let caption = fmt(updatesExistingApp ? self.postCaptionUpdate : self.postCaption)
-//            let tweet = fmt(updatesExistingApp ? self.tweetBody : self.tweetBody) // TODO: different update
-//
-//            let postTitle = (title ?? "New Release: \(diff.new.name) \(diff.new.version ?? "")").trimmed()
-//
-//            let date = ISO8601DateFormatter().string(from: Date())
-//            var post = AppNewsPost(identifier: identifier, date: date, title: postTitle, caption: caption ?? "")
-//
-//            post.appID = bundleID
-//            // clear out any older news postings with the same bundle id
-//            news = news.filter({ $0.appID != bundleID })
-//            news.append(post)
-//
-//            if let tweet = tweet, let twitterAuth = twitterAuth {
-//                tweetLimit = tweetLimit - 1
-//                if tweetLimit >= 0 {
-//                    // TODO: convert error to warning (will need a msg handler)
-//                    responses.append(try await Tweeter.post(text: tweet, auth: twitterAuth))
-//                }
-//            }
-//        }
-//
-//        // trim down the news count until we are at the limit
-//        if let newsLimit = newsLimit {
-//            news = news.suffix(newsLimit)
-//        }
-//        catalog.news = news.isEmpty ? nil : news
-//
-//        return responses
-//    }
-}
-
-private extension AltCatalog {
-//    func buildAppCatalogMarkdown() throws -> String {
-//        let catalog = self
-//
-//        // a hack to distinguish between fairapps and appcasks
-//        //let isFairApp = catalog.sourceURL?.contains("appcasks") != true
-//
-//        let format = ISO8601DateFormatter()
-//        func fmt(_ date: Date?) -> String? {
-//            guard let date = date else { return nil }
-//            //return date.localizedDate(dateStyle: .short, timeStyle: .short)
-//            return format.string(from: date)
-//        }
-//
-//        func pre(_ string: String?, limit: Int = .max) -> String {
-//            guard let string = string, !string.isEmpty else { return "" }
-//            return "`" + string.prefix(limit - 1) + (string.count > limit ? "…" : "") + "`"
-//        }
-//
-//        var md = """
-//            ---
-//            layout: catalog
-//            ---
-//
-//            <style>
-//            table {
-//                border-collapse: collapse;
-//            }
-//
-//            td, th {
-//                border: 1px solid black;
-//                white-space: nowrap;
-//            }
-//
-//            th, td {
-//                padding: 5px;
-//            }
-//
-//            tr:nth-child(even) {
-//                background-color: Lightgreen;
-//            }
-//            </style>
-//
-//            | name | version | dls | date | size | imps | views | stars | issues | category |
-//            | ---: | :------ | --: | ---- | :--- | ---: | ----: | -----:| -----: | :------- |
-//
-//            """
-//
-//        for app in catalog.apps {
-//            let landingPage = "https://\(app.name.rehyphenated()).github.io/App/"
-//
-//            let v = app.version ?? ""
-//            var version = v
-//            if app.beta == true {
-//                version += "β"
-//            }
-//
-//            md += "| "
-//            md += "[`\(pre(app.name, limit: 25))`](\(app.homepage?.absoluteString ?? landingPage))"
-//
-//            md += " | "
-//            if version.isEmpty {
-//                // no output
-//                //            } else if let relURL = URL(string: v, relativeTo: app.releasesURL), isFairApp == true {
-//                //                md += "[`\(pre(version, limit: 25))`](\(relURL.absoluteString))"
-//            } else {
-//                md += "`\(pre(version, limit: 25))`"
-//            }
-//
-//            md += " | "
-//            md += pre(app.stats?.downloadCount?.description)
-//
-//            md += " | "
-//            md += pre(fmt(app.versionDate))
-//
-//            md += " | "
-//            md += pre(app.size?.localizedByteCount())
-//
-//            md += " | "
-//            md += pre(app.stats?.impressionCount?.description)
-//
-//            md += " | "
-//            md += pre(app.stats?.viewCount?.description)
-//
-//            md += " | "
-//            md += pre(app.stats?.starCount?.description)
-//
-//            md += " | "
-//            let issueCount = (app.stats?.issueCount ?? 0)
-//            if issueCount > 0, let issuesURL = app.issuesURL {
-//                md += "[`\(pre(issueCount.description))`](\(issuesURL.absoluteString))"
-//            } else {
-//                md += pre(issueCount.description)
-//            }
-//
-//            md += " | "
-//            if let category = app.categories?.first {
-//                //                if isFairApp {
-//                //                    md += "[\(pre(category.baseValue))](https://github.com/topics/appfair-\(category.baseValue)) "
-//                //                } else {
-//                md += pre(category.rawValue)
-//                //                }
-//            }
-//
-//            md += " |\n"
-//        }
-//
-//        md += """
-//
-//            <center><small><code>{{ site.time | date_to_xmlschema }}</code></small></center>
-//
-//            """
-//
-//        return md
-//    }
 }

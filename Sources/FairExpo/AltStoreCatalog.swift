@@ -159,6 +159,8 @@ public struct AltCatalogAppItemVersion : Codable, Equatable {
     /// AltStore Classic: The URL of the uploaded .ipa file.
     /// AltStore PAL: The URL of the manifest.json in your uploaded ADP, or the root directory of the ADP itself.
     public var downloadURL: String
+    /// Undocumented, but seems to be required
+    public var size: Int64
     /// If you are unable to preserve an ADP's directory structure as-is, this allows you to manually specify the download URL for individual files in an ADP.  The keys are the names of the files you want to override (minus file extensions) and the values are the URLs where they are hosted.
     public var assetURLs: [String: String]?
     /// The minimum iOS version supported by this release. AltStore will hide any updates that are not supported by the user's device.
@@ -166,13 +168,14 @@ public struct AltCatalogAppItemVersion : Codable, Equatable {
     /// The maximum iOS version supported by this release (inclusive). AltStore will hide any updates that are not supported by the user's device.
     public var maxOSVersion: String?
 
-    public init(version: String, buildVersion: String, marketingVersion: String? = nil, date: String, localizedDescription: String? = nil, downloadURL: String, assetURLs: [String : String]? = nil, minOSVersion: String? = nil, maxOSVersion: String? = nil) {
+    public init(version: String, buildVersion: String, marketingVersion: String? = nil, date: String, localizedDescription: String? = nil, downloadURL: String, size: Int64, assetURLs: [String : String]? = nil, minOSVersion: String? = nil, maxOSVersion: String? = nil) {
         self.version = version
         self.buildVersion = buildVersion
         self.marketingVersion = marketingVersion
         self.date = date
         self.localizedDescription = localizedDescription
         self.downloadURL = downloadURL
+        self.size = size
         self.assetURLs = assetURLs
         self.minOSVersion = minOSVersion
         self.maxOSVersion = maxOSVersion
