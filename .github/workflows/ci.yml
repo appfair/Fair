@@ -2,8 +2,11 @@ name: Continuous Integration
 
 on:
   push:
-    branches: [ main ]
-  pull_request_target:
+    branches:
+      - 'main'
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+  pull_request:
     branches:
       - '*'
   schedule:
@@ -34,14 +37,6 @@ jobs:
       - name: Fair Test Linux (Release)
         if: false
         run: swift test -v --configuration release -Xswiftc -enable-testing --parallel
-
-      - name: Check fairtool formula
-        if: false
-        run: |
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          brew install fair-ground/tool/fairtool-head
-          brew test fairtool-head
-          fairtool-head version
 
   ci-macOS:
     runs-on: macos-latest
@@ -101,95 +96,4 @@ jobs:
         run: |
           VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
           gh release create "${VERSION}" -t "${VERSION}" --generate-notes fairtool-bin.zip
-
-      - name: Check fairtool formula
-        if: false
-        run: |
-          export HOMEBREW_NO_INSTALL_CLEANUP=1
-          brew install fair-ground/tool/fairtool-head
-          brew test fairtool-head
-          fairtool-head version
-          #fairtool-head app fork App-Name
-          #fairtool-head app config App-Name
-          #fairtool-head app release App-Name
-          #fairtool-head app integrate App-Name
-
-  api-doc:
-    if: false
-    runs-on: macos-12
-    timeout-minutes: 20
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_14.0.1.app/Contents/Developer
-    steps:
-      - uses: actions/checkout@v3
-      - name: Build documentation
-        run: |
-          swift -version
-          export SWIFTPM_ENABLE_COMMAND_PLUGINS=1
-          export DOCC_JSON_PRETTYPRINT="YES"
-          # add in the docc plugin to generate the docs
-          sed -I "" 's;^ *dependencies: \[ *$;dependencies: \[ .package(name: "swift-docc-plugin", url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),;g' Package.swift
-
-          # until https://github.com/apple/swift-docc/issues/255
-          # is implemented, we can only have a single target,
-          # so we copy all the FairCore files into FairApp
-          # cp -v Sources/FairCore/*.swift Sources/FairApp
-
-          # FairApp
-          swift package --allow-writing-to-directory docs \
-            generate-documentation --target FairApp \
-            --disable-indexing \
-            --transform-for-static-hosting \
-            --hosting-base-path Fair \
-            --output-path docs
-
-          # FairCore
-          swift package --allow-writing-to-directory docs-faircore \
-            generate-documentation --target FairCore \
-            --disable-indexing \
-            --transform-for-static-hosting \
-            --hosting-base-path Fair \
-            --output-path docs-faircore
-          cp -R "docs-faircore/data/documentation/"* "docs/data/documentation/"
-          cp -R "docs-faircore/documentation/"* "docs/documentation/"
-          rm -r docs-faircore
-
-          # FairKit
-          swift package --allow-writing-to-directory docs-fairkit \
-            generate-documentation --target FairKit \
-            --disable-indexing \
-            --transform-for-static-hosting \
-            --hosting-base-path Fair \
-            --output-path docs-fairkit
-          cp -R "docs-fairkit/data/documentation/"* "docs/data/documentation/"
-          cp -R "docs-fairkit/documentation/"* "docs/documentation/"
-          rm -r docs-fairkit
-
-          # FairExpo
-          swift package --allow-writing-to-directory docs-fairexpo \
-            generate-documentation --target FairExpo \
-            --disable-indexing \
-            --transform-for-static-hosting \
-            --hosting-base-path Fair \
-            --output-path docs-fairexpo
-          cp -R "docs-fairexpo/data/documentation/"* "docs/data/documentation/"
-          cp -R "docs-fairexpo/documentation/"* "docs/documentation/"
-          rm -r docs-fairexpo
-
-          # FairTool executable
-          swift package --allow-writing-to-directory docs-fairtool \
-            generate-documentation --target fairtool \
-            --disable-indexing \
-            --transform-for-static-hosting \
-            --hosting-base-path Fair \
-            --output-path docs-fairtool
-          cp -R "docs-fairtool/data/documentation/"* "docs/data/documentation/"
-          cp -R "docs-fairtool/documentation/"* "docs/documentation/"
-          rm -r docs-fairtool
-
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: '.'
 

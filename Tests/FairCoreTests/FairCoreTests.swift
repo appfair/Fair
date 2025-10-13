@@ -184,7 +184,7 @@ final class FairCoreTests: XCTestCase {
 
         // shows the difference between the auto-generated bundle's infoDictionary and the FairCore.plist
         // XCTAssertEqual("Fair-FairCore-resources", Bundle.fairCore.infoDictionary?["CFBundleIdentifier"] as? String) // this doesn't seem to happen on CI
-        XCTAssertEqual("org.fair-ground.Fair", Bundle.fairCoreInfo.CFBundleIdentifier)
+        XCTAssertEqual("org.appfair.Fair", Bundle.fairCoreInfo.CFBundleIdentifier)
 
     }
 
