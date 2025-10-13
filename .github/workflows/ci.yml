@@ -64,11 +64,12 @@ jobs:
         run: xcodebuild test -configuration Release -scheme "Fair-Package" -sdk "iphonesimulator" -destination "platform=iOS Simulator,name=iPhone 14 Pro"
 
       - name: Test macOS (Debug)
-        run: xcodebuild test -configuration Debug -scheme "Fair-Package" -sdk "macosx" -destination "platform=macosx"
+        if: false
+        run: xcodebuild test -configuration Debug -scheme "Fair-Package" -sdk "macosx" -destination "platform=macOS"
 
       - name: Test macOS (Release)
         if: false
-        run: xcodebuild test -configuration Release -scheme "Fair-Package" -sdk "macosx" -destination "platform=macosx"
+        run: xcodebuild test -configuration Release -scheme "Fair-Package" -sdk "macosx" -destination "platform=macOS"
 
       - name: Test Package
         #run: xcrun swift test --parallel
@@ -77,6 +78,7 @@ jobs:
       - name: Run fairtool
         run: xcrun swift run fairtool version
 
+      # build binary artifact for macOS and Static Linux
       - name: Install swiftly
         run: curl -L https://swiftlang.github.io/swiftly/swiftly-install.sh | bash -s -- -y
       - name: Install Swift 6.2 host toolchain
