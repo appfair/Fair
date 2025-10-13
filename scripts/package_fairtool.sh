@@ -1,6 +1,7 @@
 #!/bin/sh -ex
-# builds and packages the fairtool executable for macOS and Linux
-
+# Builds and packages the fairtool executable for macOS and Linux
+# Requires that Swiftly and the Static Linux SDK be installed:
+# https://www.swift.org/documentation/articles/static-linux-getting-started.html
 CONFIGURATION=${CONFIGURATION:-"release"}
 
 # cleanup previous runs
@@ -8,14 +9,14 @@ rm -rf fairtool-bin
 
 # Static Linux build
 for ARCH in "x86_64" "aarch64"; do
-    swiftly run swift build --swift-sdk "${ARCH}-swift-linux-musl" --configuration "${CONFIGURATION}" --product fairtool +6.2
+    swiftly run swift build --swift-sdk "${ARCH}-swift-linux-musl" --configuration "${CONFIGURATION}" --product fairtool
     mkdir -p fairtool-bin/Linux/${ARCH}
     cp -a .build/${ARCH}-swift-linux-musl/${CONFIGURATION}/fairtool fairtool-bin/Linux/${ARCH}/
 done
 
 # macOS build
 for ARCH in "x86_64" "arm64"; do
-    swiftly run swift build --arch "${ARCH}" --configuration "${CONFIGURATION}" --product fairtool +6.2
+    swiftly run swift build --arch "${ARCH}" --configuration "${CONFIGURATION}" --product fairtool
     mkdir -p fairtool-bin/Darwin/${ARCH}
     cp -a .build/${ARCH}-apple-macosx/${CONFIGURATION}/fairtool fairtool-bin/Darwin/${ARCH}/
 done

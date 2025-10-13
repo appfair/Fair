@@ -80,7 +80,7 @@ jobs:
 
       # build binary artifact for macOS and Static Linux
       - name: Install swiftly
-        run: curl -L https://swiftlang.github.io/swiftly/swiftly-install.sh | bash -s -- -y
+        run: brew install swiftly
       - name: Install Swift 6.2 host toolchain
         run: swiftly install 6.2.0
       - name: Install Static Linux SDK
