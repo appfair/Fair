@@ -28,9 +28,13 @@ done
 # make a shell script that launches the right binary
 cat > fairtool-bin/fairtool << "EOF"
 #!/bin/bash
-set -eu
+set -e
 FOLDER="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-${FOLDER}/$(uname -s)/$(uname -m)/fairtool ${@}
+OS=$(uname -s)
+ARCH=$(uname -m)
+FAIRTOOL="${FOLDER}"/"${OS}"/"${ARCH}"/fairtool
+if [ "${OS}" = "Darwin" ]; then xattr -c "${FAIRTOOL}"; fi
+"${FAIRTOOL}" "${@}"
 EOF
 chmod +x fairtool-bin/fairtool
 

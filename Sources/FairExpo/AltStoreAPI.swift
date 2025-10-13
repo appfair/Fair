@@ -87,7 +87,8 @@ public struct AltStoreService : EndpointService {
                 } else if downloadResponse.downloadExpired == true {
                     // request processing, then continue to wait…
                     logger("download expired for adpid=\(adpid), requesting re-download…")
-                    let request = try await request(AltStoreService.ADPProcessRequest(adpID: adpid))
+                    let processing = try await request(AltStoreService.ADPProcessRequest(adpID: adpid))
+                    logger("request processing for adpid=\(adpid) with status \(processing.status ?? "unknown")")
                     try await Task.sleep(interval: 10)
                     continue
                 }
@@ -107,7 +108,7 @@ public struct AltStoreService : EndpointService {
                     // try requesting the download
                     logger("download unknown for adpid=\(adpid), requesting processing…")
                     // TODO: these seem to trigger a 202 with no data when processing is initiated
-                    let request = try? await request(AltStoreService.ADPProcessRequest(adpID: adpid))
+                    _ = try await requestOptional(AltStoreService.ADPProcessRequest(adpID: adpid))
                     try await Task.sleep(interval: 10)
                     continue
                 } else {

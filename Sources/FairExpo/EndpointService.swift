@@ -110,6 +110,13 @@ extension EndpointService {
     public func request<A: APIRequest>(_ request: A, cache: URLRequest.CachePolicy? = nil) async throws -> A.Response where A.Service == Self {
         try await decode(data: try session.fetch(request: buildRequest(for: request, cache: cache)).data)
     }
+    
+    /// Perform a request, but permit the data to be empty and and return nil.
+    public func requestOptional<A: APIRequest>(_ request: A, cache: URLRequest.CachePolicy? = nil) async throws -> A.Response? where A.Service == Self {
+        let data = try await session.fetch(request: buildRequest(for: request, cache: cache)).data
+        if data.isEmpty { return nil }
+        return try decode(data: data)
+    }
 
     /// Fetches the web service for the given request, following the cursor until the `batchHandler` returns a non-`nil` response; the first response element will be returned
     @discardableResult public func requestBatches<T, A: CursoredAPIRequest>(_ request: A, cache: URLRequest.CachePolicy? = nil, interleaveDelay: TimeInterval? = 1.5, batchHandler: (_ requestIndex: Int, _ urlResponse: URLResponse?, _ batch: A.Response) throws -> T?) async throws -> T? where A.Service == Self {
