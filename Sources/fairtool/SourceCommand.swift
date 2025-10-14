@@ -3,14 +3,13 @@ import FairCore
 import FairExpo
 import ArgumentParser
 
-
 public struct SourceCommand : AsyncParsableCommand {
     public static var configuration = CommandConfiguration(
         commandName: "source",
         abstract: "App source catalog management commands",
         subcommands: [
             CreateCommand.self,
-            //MergeCommand.self,
+            MergeCommand.self,
             //VerifyCommand.self,
             //PostReleaseCommand.self,
         ])
@@ -31,16 +30,19 @@ public struct SourceCommand : AsyncParsableCommand {
         }
     }
 
-    public struct CreateFDroidCatalogCommand: CatalogBuilderCommand {
+    public struct CreateFDroidCatalogCommand: CatalogCommand {
         @OptionGroup public var msgOptions: MsgOptions
         @OptionGroup public var outputOptions: OutputOptions
         @OptionGroup public var sourceOptions: SourceOptions
 
-        @Option(help: ArgumentHelp("The app token to catalog", valueName: "token"))
-        public var token: String
+        @Flag(inversion: .prefixedNo, help: ArgumentHelp("Upload the app catalog for a single app GitHub release"))
+        public var upload: Bool = false
 
-        @Option(help: ArgumentHelp("The app version to catalog", valueName: "version"))
-        public var version: String?
+        @Flag(inversion: .prefixedNo, help: ArgumentHelp("Whether to overwrite existing catalog uploads"))
+        public var overwrite: Bool = true
+
+        @Argument(help: ArgumentHelp("App token/versions to merge", valueName: "apps"))
+        public var appTokens: [String]
 
         public static var configuration = CommandConfiguration(
             commandName: "fdroid",
@@ -51,11 +53,43 @@ public struct SourceCommand : AsyncParsableCommand {
         public init() {
         }
 
-        public mutating func run() async throws {
-            msg(.info, "creating f-droid catalog")
+        public func run() async throws {
+            let output = try await createCatalog()
+            try msgOptions.writeOutput(output)
+        }
 
-            let version = try await fetchLatestVersion(unless: self.version)
-            let dataSource = try await fetchSourceZip(version: version)
+        public func createCatalog() async throws -> Output {
+            var packageList: [(String, FDroidIndex.Package)] = []
+
+            for appToken in appTokens {
+                let tokenParts = appToken.split(separator: "/")
+
+                let appName = tokenParts.first?.description ?? appToken
+                let appVersion = tokenParts.count > 1 ? tokenParts.dropFirst().first?.description : nil
+
+                msg(.info, "creating app item for: \(appName) version=\(appVersion ?? "")")
+                let item = try await createAppItem(token: appName, version: appVersion)
+                packageList.append(item)
+            }
+
+
+            var packages: Dictionary<String, FDroidIndex.Package> = [:]
+            for (appid, package) in packageList {
+                packages[appid] = package
+            }
+
+            let repo = FDroidIndex.Repo(name: ["en-US": "name"], icon: ["en-US": .init(name: "images/icon/english.svg")], address: "", timestamp: 0)
+            let catalog = FDroidIndex(repo: repo, packages: packages)
+
+            //let json = try outputOptions.writeCatalog(catalog)
+            return catalog
+        }
+
+        public func createAppItem(token: String, version latestVersion: String?) async throws -> (String, FDroidIndex.Package) {
+            msg(.info, "creating f-droid catalog for token: \(token)")
+
+            let version = try await fetchLatestVersion(token: token, unless: latestVersion)
+            let dataSource = try await fetchSourceZip(token: token, version: version)
             let pathPrefix = (dataSource.paths.first?.pathName ?? "") + "/" // e.g.: "Tune-Out-1.0.2/"
             //let relativePaths = dataSource.paths.map(\.pathName).map({ $0.dropFirst(pathPrefix.count).description })
 
@@ -73,7 +107,7 @@ public struct SourceCommand : AsyncParsableCommand {
             //let productName = try env(key: "PRODUCT_NAME")
             //let marketingVersion = try env(key: "MARKETING_VERSION")
             //let projectVersion = try env(key: "CURRENT_PROJECT_VERSION")
-            //let bundleIdentifier = try env(key: "PRODUCT_BUNDLE_IDENTIFIER")
+            let appIdentifier = try env(key: "PRODUCT_BUNDLE_IDENTIFIER").replacing("-", with: "_") // FIXME: check manifest for overridden identifier
             //let packageName = try env(key: "ANDROID_PACKAGE_NAME")
 
 
@@ -84,21 +118,14 @@ public struct SourceCommand : AsyncParsableCommand {
             let metadata = FDroidIndex.Package.Metadata(added: 0, lastUpdated: 0)
             let package = FDroidIndex.Package(metadata: metadata, versions: [version: packageVersion])
 
-            var packages: Dictionary<String, FDroidIndex.Package> = [:]
-            packages[token] = package
-
-            let repo = FDroidIndex.Repo(name: ["en-US": "name"], icon: ["en-US": .init(name: "images/icon/english.svg")], address: "", timestamp: 0)
-            let catalog = FDroidIndex(repo: repo, packages: packages)
-
-            let json = try outputOptions.writeCatalog(catalog)
-            _ = json
+            return (appIdentifier, package)
         }
     }
 
     /// Creates an AltStore source from one or more source folders or zip URLs.
     ///
     /// Example use: `fairtool source create altstore --token Skip-Notes --version 0.8.6 --adpid 412cd63d-180f-4ee0-a06a-accca8fe349e
-    public struct CreateAltStoreCatalogCommand: CatalogBuilderCommand {
+    public struct CreateAltStoreCatalogCommand: CatalogCommand {
         @OptionGroup public var msgOptions: MsgOptions
         @OptionGroup public var outputOptions: OutputOptions
         @OptionGroup public var sourceOptions: SourceOptions
@@ -107,16 +134,13 @@ public struct SourceCommand : AsyncParsableCommand {
         public var adpid: String?
 
         @Flag(inversion: .prefixedNo, help: ArgumentHelp("Upload the app catalog for a single app GitHub release"))
-        public var upload: Bool = true
+        public var upload: Bool = false
 
         @Flag(inversion: .prefixedNo, help: ArgumentHelp("Whether to overwrite existing catalog uploads"))
         public var overwrite: Bool = true
 
-        @Option(help: ArgumentHelp("The app token to catalog", valueName: "token"))
-        public var token: String
-
-        @Option(help: ArgumentHelp("The app version to catalog", valueName: "version"))
-        public var version: String?
+        @Argument(help: ArgumentHelp("App token/versions to merge", valueName: "apps"))
+        public var appTokens: [String]
 
         public static var configuration = CommandConfiguration(
             commandName: "altstore",
@@ -128,7 +152,12 @@ public struct SourceCommand : AsyncParsableCommand {
         public init() {
         }
 
-        public mutating func run() async throws {
+        public func run() async throws {
+            let output = try await createCatalog()
+            try msgOptions.writeOutput(output)
+        }
+
+        public func createCatalog() async throws -> Output {
             msg(.info, "creating altstore catalog")
             var catalog = AltCatalog()
             catalog.name = sourceOptions.catalogName
@@ -138,16 +167,18 @@ public struct SourceCommand : AsyncParsableCommand {
             catalog.iconURL = sourceOptions.catalogIconURL
             catalog.tintColor = sourceOptions.catalogTintColor
 
-            // old-style way (with multiple apps):
-            //var apps: [(appToken: String, appItem: AltCatalogAppItem)] = []
-            //for source in sources {
-            //    msg(.info, "analyzing source: \(source)")
-            //    let item = try await createAppItem(path: source)
-            //    apps.append(item)
-            //}
+            var apps: [(appToken: String, appItem: AltCatalogAppItem)] = []
+            for appToken in appTokens {
+                let tokenParts = appToken.split(separator: "/")
 
-            let item = try await createAppItem(token: token, version: version)
-            let apps = [item]
+                let appName = tokenParts.first?.description ?? appToken
+                let appVersion = tokenParts.count > 1 ? tokenParts.dropFirst().first?.description : nil
+
+                msg(.info, "creating app item for: \(appName) version=\(appVersion ?? "")")
+                let item = try await createAppItem(token: appName, version: appVersion)
+                apps.append(item)
+            }
+
             catalog.apps = apps.map(\.appItem)
 
             if upload {
@@ -166,22 +197,20 @@ public struct SourceCommand : AsyncParsableCommand {
                 //catalog.description = sourceItem.appItem.localizedDescription
                 catalog.tintColor = sourceItem.appItem.tintColor
 
-                let json = try outputOptions.writeCatalog(catalog)
+                let json = try catalog.toJSON(outputFormatting: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes], dateEncodingStrategy: .iso8601, dataEncodingStrategy: .base64)
 
                 // upload the generated catalog to the GitHub releases
                 _ = try await FileManager.default.withTemporaryFile(named: "altstore.json", contents: json) { path in
                     try await githubReleaseUpload(appToken: sourceItem.appToken, version: appVersion, paths: [path])
                 }
-            } else {
-                // no upload, just write out the catalog
-                let json = try outputOptions.writeCatalog(catalog)
-                _ = json
             }
+
+            return catalog
         }
 
         func createAppItem(token appToken: String, version releaseVersion: String?) async throws -> (appToken: String, appItem: AltCatalogAppItem) {
-            let version = try await fetchLatestVersion(unless: self.version)
-            let dataSource = try await fetchSourceZip(version: version)
+            let version = try await fetchLatestVersion(token: appToken, unless: releaseVersion)
+            let dataSource = try await fetchSourceZip(token: appToken, version: version)
             let pathPrefix = (dataSource.paths.first?.pathName ?? "") + "/" // e.g.: "Tune-Out-1.0.2/"
             let relativePaths = dataSource.paths.map(\.pathName).map({ $0.dropFirst(pathPrefix.count).description })
 
@@ -219,7 +248,8 @@ public struct SourceCommand : AsyncParsableCommand {
             let subtitle = try loadDarwinFastlaneMetadata("subtitle.txt")
             let releaseNotes = try loadDarwinFastlaneMetadata("release_notes.txt")
 
-            let releaseBaseURL = try self.repositoryURL.appending(components: "releases", "download", version)
+            let repositoryURL = try self.repositoryBaseURL.appending(component: appToken)
+            let releaseBaseURL = repositoryURL.appending(components: "releases", "download", version)
             let rawContentURL = try self.contentURL.appending(components: appToken, "refs", "tags", version)
 
             let manifestURL = releaseBaseURL.appending(path: "manifest.json")
@@ -357,6 +387,91 @@ public struct SourceCommand : AsyncParsableCommand {
         }
     }
 
+    public struct MergeCommand: AsyncParsableCommand {
+        public static var configuration = CommandConfiguration(
+            commandName: "merge",
+            abstract: "Merge multiple app catalogs into a single source",
+            subcommands: [
+                MergeAltStoreCatalogCommand.self,
+                MergeFDroidCatalogCommand.self,
+            ])
+
+        public init() {
+        }
+    }
+
+    public struct MergeFDroidCatalogCommand: CatalogCommand {
+        @OptionGroup public var msgOptions: MsgOptions
+        @OptionGroup public var outputOptions: OutputOptions
+        @OptionGroup public var sourceOptions: SourceOptions
+
+        @Flag(inversion: .prefixedNo, help: ArgumentHelp("Upload the app catalog for a single app GitHub release"))
+        public var upload: Bool = false
+
+        @Flag(inversion: .prefixedNo, help: ArgumentHelp("Whether to overwrite existing catalog uploads"))
+        public var overwrite: Bool = true
+
+        @Argument(help: ArgumentHelp("App token/versions to merge", valueName: "apps"))
+        public var apps: [String]
+
+
+        public static var configuration = CommandConfiguration(
+            commandName: "fdroid",
+            abstract: "Merge F-Droid catalogs into a single source")
+
+        public typealias Output = FDroidIndex
+
+        public init() {
+        }
+
+        public func executeCommand() -> AsyncThrowingStream<Output, Error> {
+            return executeStream([()]) { void in
+                return try await mergeCatalogs()
+            }
+        }
+
+        public func mergeCatalogs() async throws -> Output {
+            msg(.info, "merging f-droid catalog")
+            throw AppError("TODO")
+        }
+    }
+
+    public struct MergeAltStoreCatalogCommand: CatalogCommand {
+        @OptionGroup public var msgOptions: MsgOptions
+        @OptionGroup public var outputOptions: OutputOptions
+        @OptionGroup public var sourceOptions: SourceOptions
+
+        @Flag(inversion: .prefixedNo, help: ArgumentHelp("Upload the app catalog for a single app GitHub release"))
+        public var upload: Bool = false
+
+        @Flag(inversion: .prefixedNo, help: ArgumentHelp("Whether to overwrite existing catalog uploads"))
+        public var overwrite: Bool = true
+
+        @Argument(help: ArgumentHelp("App token/versions to merge", valueName: "apps"))
+        public var apps: [String]
+
+        public static var configuration = CommandConfiguration(
+            commandName: "altstore",
+            abstract: "Merge AltStore catalogs into a single source")
+
+        public typealias Output = FDroidIndex
+
+        public init() {
+        }
+
+        public func executeCommand() -> AsyncThrowingStream<Output, Error> {
+            return executeStream([()]) { void in
+                return try await mergeCatalogs()
+            }
+        }
+
+        public func mergeCatalogs() async throws -> Output {
+            msg(.info, "merging altstore catalog")
+            throw AppError("TODO")
+        }
+    }
+
+
     public struct NewsOptions: ParsableArguments, NewsItemFormat {
         @Option(name: [.long], help: ArgumentHelp("The post title format", valueName: "format"))
         public var postTitle: String?
@@ -394,14 +509,12 @@ public protocol NewsItemFormat {
     var postURL: String? { get }
 }
 
-protocol CatalogBuilderCommand : FairParsableCommand {
-    var token: String { get }
-    var version: String? { get }
 
+protocol CatalogCommand : FairParsableCommand {
     var sourceOptions: SourceOptions { get }
 }
 
-extension CatalogBuilderCommand {
+extension CatalogCommand {
     var repositoryBaseURL: URL {
         get throws {
             guard let repoURL = URL(string: sourceOptions.hubRepository) else {
@@ -420,37 +533,41 @@ extension CatalogBuilderCommand {
         }
     }
 
-    var repositoryURL: URL {
-        get throws {
-            try repositoryBaseURL.appending(path: token)
-        }
-    }
-
     /// Get the latest version by parsing the RSS for the hub's releases
-    func fetchLatestVersion(unless existingVersion: String?) async throws -> String {
+    func fetchLatestVersion(token: String, unless existingVersion: String?) async throws -> String {
         if let existingVersion { return existingVersion }
-        let feedURL = try repositoryURL.appending(path: "releases.atom")
-        let (atomData, _) = try await URLSession.shared.fetch(request: URLRequest(url: feedURL))
 
-        let atom = try AtomFeed(xmlData: atomData)
-        guard let latestRelease = atom.entries.first else {
-            throw AppError("No entries in latest RSS feed for releases")
+        guard let latestVersion = try await fetchReleaseTags(token: token).first else {
+            throw AppError("No releases found in atom feed for \(token)")
         }
-
-        // the GitHub Atom feed doesn't list the actual tag directly, so we parse it from the link in the entry
-        guard let link = latestRelease.links?.first(where: { $0.rel == "alternate" })?.href,
-              let linkURL = URL(string: link) else {
-            throw AppError("No matching links in latest RSS feed for release")
-        }
-
-        let latestVersion = linkURL.lastPathComponent
         msg(.info, "fetched latest version for \(token): \(latestVersion)")
         return latestVersion
     }
 
-    func fetchSourceZip(version: String) async throws -> ZipArchiveDataWrapper {
+    func fetchReleaseTags(token: String) async throws -> [String] {
+        let feedURL = try repositoryBaseURL.appending(path: token).appending(path: "releases.atom")
+        let (atomData, _) = try await URLSession.shared.fetch(request: URLRequest(url: feedURL))
+
+        let atom = try AtomFeed(xmlData: atomData)
+
+        return try atom.entries.map { release in
+            // the GitHub Atom feed doesn't list the actual tag directly, so we parse it from the link in the entry
+            guard let link = release.links?.first(where: { $0.rel == "alternate" })?.href,
+                  let linkURL = URL(string: link) else {
+                throw AppError("No matching links in latest RSS feed for release")
+            }
+
+            // the link will be something like:
+            let latestVersion = linkURL.lastPathComponent
+            return latestVersion
+        }
+    }
+
+    func fetchSourceZip(token: String, version: String) async throws -> ZipArchiveDataWrapper {
+        let repositoryURL = try repositoryBaseURL.appending(path: token)
+
         // e.g.: https://delivery.appfair.net/Tune-Out/archive/refs/tags/1.0.2.zip
-        let sourceArchiveURL = try self.repositoryURL.appending(components: "archive", "refs", "tags", version + ".zip")
+        let sourceArchiveURL = repositoryURL.appending(components: "archive", "refs", "tags", version + ".zip")
 
         //msg(.info, "checking sourceArchiveURL: \(sourceArchiveURL.absoluteString)")
         msg(.info, "downloading sourceArchiveURL: \(sourceArchiveURL.absoluteString)")

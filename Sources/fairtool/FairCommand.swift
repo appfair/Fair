@@ -353,7 +353,7 @@ extension FairCommand {
 
                 let settings = try projectOptions.buildSettings()
 
-                guard let appName = settings["PRODUCT_NAME"] else {
+                guard let appName = settings.productName else {
                     throw AppError(NSLocalizedString("Missing PRODUCT_NAME in appfair.xcconfig", bundle: .module, comment: "error message"))
                 }
 

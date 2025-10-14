@@ -10,11 +10,12 @@ import FoundationNetworking
 ///
 /// e.g., https://faq.altstore.io/developers/rest-api
 public struct MarketplaceEndpoint : EndpointService {
+    /// E.g., https://api.altstore.io
     public var endpointBase: URL
 
     public static var backoffCodes: IndexSet = []
 
-    public init(endpointBase: URL = URL(string: "https://api.altstore.io")!) {
+    public init(endpointBase: URL) {
         self.endpointBase = endpointBase
     }
 

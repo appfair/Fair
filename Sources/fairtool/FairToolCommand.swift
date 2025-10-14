@@ -12,19 +12,20 @@ import SwiftUI
 
 public struct FairToolCommand : AsyncParsableCommand {
     public static let experimental = false
-    public static var configuration = CommandConfiguration(commandName: "fairtool",
-                                                           abstract: "Manage an ecosystem of apps",
-                                                           shouldDisplay: !experimental,
-                                                           subcommands: [
-                                                            AppCommand.self,
-                                                            TranslateCommand.self,
-                                                            FairCommand.self,
-                                                            ArtifactCommand.self,
-                                                            BrewCommand.self,
-                                                            JSONCommand.self,
-                                                            SourceCommand.self,
-                                                            VersionCommand.self, // `fairtool version` shows the current version
-                                                           ]
+    public static var configuration = CommandConfiguration(
+        commandName: "fairtool",
+        abstract: "Manage an ecosystem of apps",
+        shouldDisplay: !experimental,
+        subcommands: [
+            AppCommand.self,
+            TranslateCommand.self,
+            FairCommand.self,
+            ArtifactCommand.self,
+            BrewCommand.self,
+            JSONCommand.self,
+            SourceCommand.self,
+            VersionCommand.self, // `fairtool version` shows the current version
+        ]
     )
 
     /// This is needed to handle execution of the tool from as a sandboxed command plugin
@@ -137,7 +138,7 @@ protocol FairAppCommand : FairProjectCommand {
 
 extension FairAppCommand {
 
-    #if os(macOS)
+#if os(macOS)
     /// Run `genstrings` on the source files in the project.
     func generateLocalizedStrings(locstr: String = "Localizable.strings") async throws {
         //msg(.info, "Scanning strings for localization")
@@ -226,7 +227,7 @@ extension FairAppCommand {
             }
         }
     }
-    #endif
+#endif
 }
 
 extension FairMsgCommand {
@@ -361,20 +362,20 @@ public struct SourceOptions: ParsableArguments {
 
     // Per-app arguments
 
-//    @Option(help: ArgumentHelp("The default description(s) for the app(s)", valueName: "desc"))
-//    public var appLocalizedDescription: [String] = []
-//
-//    @Option(help: ArgumentHelp("The default versionDescription for the app(s)", valueName: "desc"))
-//    public var appVersionDescription: [String] = []
-//
-//    @Option(help: ArgumentHelp("The default subtitle(s) for the app(s)", valueName: "title"))
-//    public var appSubtitle: [String] = []
-//
-//    @Option(help: ArgumentHelp("The default developer name(s) for the app(s)", valueName: "email"))
-//    public var appDeveloperName: [String] = []
-//
-//    @Option(help: ArgumentHelp("The download URLfor the app(s)", valueName: "URL"))
-//    public var appDownloadURL: [String] = []
+    //    @Option(help: ArgumentHelp("The default description(s) for the app(s)", valueName: "desc"))
+    //    public var appLocalizedDescription: [String] = []
+    //
+    //    @Option(help: ArgumentHelp("The default versionDescription for the app(s)", valueName: "desc"))
+    //    public var appVersionDescription: [String] = []
+    //
+    //    @Option(help: ArgumentHelp("The default subtitle(s) for the app(s)", valueName: "title"))
+    //    public var appSubtitle: [String] = []
+    //
+    //    @Option(help: ArgumentHelp("The default developer name(s) for the app(s)", valueName: "email"))
+    //    public var appDeveloperName: [String] = []
+    //
+    //    @Option(help: ArgumentHelp("The download URLfor the app(s)", valueName: "URL"))
+    //    public var appDownloadURL: [String] = []
 
     public init() {
     }
@@ -762,95 +763,9 @@ extension FairParsableCommand {
     }
 
     /// Parses the `AccentColor.colorset/Contents.json` file and returns the first color item
-//    func parseColorContents(url: URL) throws -> (r: Double, g: Double, b: Double, a: Double)? {
-//        try AccentColorList(fromJSON: Data(contentsOf: url)).firstRGBAColor
-//    }
-
-//    @discardableResult func saveCask(_ app: AltCatalogAppItem, to caskFolderFlag: String, prereleaseSuffix: String?) throws -> Bool {
-//        let appNameSpace = app.name
-//        let appNameHyphen = app.name.rehyphenated()
-//
-//        guard let version = app.version else {
-//            msg(.info, "no version for app: \(appNameHyphen)")
-//            return false
-//        }
-//
-//        guard let sha256 = app.sha256 else {
-//            msg(.info, "no hash for app: \(appNameHyphen)")
-//            return false
-//        }
-//
-//        let fairground = Bundle.catalogBrowserAppOrg // e.g., App-Fair
-//
-//        let isCatalogAppCask = appNameHyphen == fairground
-//
-//        var caskName = appNameHyphen.lowercased()
-//
-//        if app.beta == true {
-//            guard let prereleaseSuffix = prereleaseSuffix else {
-//                return false // we've speficied not to generate casks for pre-releases
-//            }
-//            caskName = caskName + prereleaseSuffix
-//        }
-//
-//        let caskPath = caskName + ".rb"
-//
-//        // apps other than "Catalog Name.app" are installed att "/Applications/Catalog Name/App Name.app"
-//        let installPrefix = isCatalogAppCask ? "" : (fairground.dehyphenated() + "/")
-//
-//        // depending on the fair-ground's catalog app becomes difficult when the catalog app updates itself; homebrew won't overwrite the self-updated app even with the force flag, which means that a user may need to manually delete and re-install the app;
-//        // let fairgroundCask = fairground.lowercased() // e.g., app-fair
-//        let dependency = "" // isCatalogAppCask ? "" : "depends_on cask: \"\(fairgroundCask)\""
-//
-//        let appDesc = (app.subtitle ?? appNameSpace).replacingOccurrences(of: "\"", with: "'")
-//        guard var downloadURL = app.downloadURL?.absoluteString else {
-//            dbg("missing downloadURL")
-//            return false
-//        }
-//
-//        // all apps other than the catalog browser are
-//        let appStanza = "app \"\(appNameSpace).app\", target: \"\(installPrefix)\(appNameSpace).app\""
-//
-//        // this helper stanza will make an executable symlink from the app binary to the cask name
-//        // it will allow the running of "Super App.app" CLI with /usr/local/bin/super-app
-//        let appHelper = /* !isCatalogAppCask ? "" : */ "binary \"#{appdir}/\(installPrefix)\(appNameSpace).app/Contents/MacOS/\(appNameSpace)\", target: \"\(caskName)\""
-//
-//        // change the hardcoded version string to a "#{version}" token, which minimizes the number of source changes when the app is upgraded
-//        downloadURL = downloadURL.replacingOccurrences(of: "/\(version)/", with: "/#{version}/")
-//
-//        let repobase = "github.com/\(appNameHyphen)/"
-//
-//        let caskSpec = """
-//cask "\(caskName)" do
-//  version "\(version)"
-//  sha256 "\(sha256)"
-//
-//  url "\(downloadURL)",
-//      verified: "\(repobase)"
-//  name "\(appNameSpace)"
-//  desc "\(appDesc)"
-//  homepage "https://\(repobase)App/"
-//
-//  depends_on macos: ">= :monterey"
-//  \(dependency)
-//
-//  \(appStanza)
-//  \(appHelper)
-//
-//  postflight do
-//    system "xattr", "-r", "-d", "com.apple.quarantine", "#{appdir}/\(installPrefix)\(app.name).app"
-//  end
-//
-//  zap trash: [
-//    \(app.installationDataLocations.map({ $0.enquote(with: #"""#) }).joined(separator: ",\n    "))
-//  ]
-//end
-//"""
-//
-//        let caskFile = URL(fileURLWithPath: caskFolderFlag).appendingPathComponent(caskPath)
-//        try caskSpec.write(to: caskFile, atomically: false, encoding: .utf8)
-//        return true
-//    }
+    //    func parseColorContents(url: URL) throws -> (r: Double, g: Double, b: Double, a: Double)? {
+    //        try AccentColorList(fromJSON: Data(contentsOf: url)).firstRGBAColor
+    //    }
 
     static var packageValidationLine: String { "// MARK: fair-ground package validation" }
 
@@ -925,37 +840,6 @@ public struct GitConfig : RawRepresentable, Hashable {
     }
 }
 
-extension EnvFile {
-    /// The `PRODUCT_NAME` parsed as a `String`
-    public var productName: String? {
-        get { self["PRODUCT_NAME"] }
-        set { self["PRODUCT_NAME"] = newValue }
-    }
-
-    /// The `PRODUCT_BUNDLE_IDENTIFIER` parsed as a `String`
-    public var bundleIdentifier: String? {
-        get { self["PRODUCT_BUNDLE_IDENTIFIER"] }
-        set { self["PRODUCT_BUNDLE_IDENTIFIER"] = newValue }
-    }
-
-    /// The `CURRENT_PROJECT_VERSION` parsed as an `Int`
-    public var buildNumber: Int? {
-        get { self["CURRENT_PROJECT_VERSION"].flatMap({ Int($0) }) }
-        set { self["CURRENT_PROJECT_VERSION"] = newValue?.description }
-    }
-
-    /// The `MARKETING_VERSION` parsed as an ``Semver``
-    public var appVersion: SemVer? {
-        get { self["MARKETING_VERSION"].flatMap({ SemVer(string: $0) }) }
-        set { self["MARKETING_VERSION"] = newValue?.versionString }
-    }
-
-    /// The `SUPPORTED_PLATFORMS` parsed as a `String`
-    public var supportedPlatforms: String? {
-        get { self["SUPPORTED_PLATFORMS"] }
-        set { self["SUPPORTED_PLATFORMS"] = newValue }
-    }
-}
 
 /// Allow multiple newline separated elements for a single value, which
 /// permits us to pass multiple e-mail addresses in a single
@@ -969,6 +853,11 @@ private func joinWhitespaceSeparated(_ addresses: [String]) -> [String] {
 
 
 extension AsyncParsableCommand {
+    /// Iterates over each of the given arguments and executes the block against the arg, outputting the JSON result as it goes.
+    func executeSingle<U: FairCommandOutput>(block: @escaping () async throws -> U) -> AsyncThrowingStream<U, Error> {
+        [()].asyncMap(block)
+    }
+
     /// Iterates over each of the given arguments and executes the block against the arg, outputting the JSON result as it goes.
     func executeStream<T, U: FairCommandOutput>(_ arguments: [T], block: @escaping (T) async throws -> U) -> AsyncThrowingStream<U, Error> {
         arguments.asyncMap(block)

@@ -11,10 +11,17 @@ import fairtool
 final class FairCommandTests: XCTestCase {
     typealias ToolMessage = (kind: MessageKind, items: [Any?])
 
+    private func runToolOutputSingle<C: FairParsableCommand>(_ commands: CommandConfiguration..., cmd: C.Type, args: [String]) async throws -> (output: C.Output, messages: [(MessageKind, [Any?])]) where C.Output : Decodable {
+        let result = try await runTool(commands: commands + [cmd.configuration], args: args)
+        let output = result.output.joined()
+        //dbg("output:", output)
+        return (try C.Output(fromJSON: output.utf8Data, dateDecodingStrategy: .iso8601), result.messages)
+    }
+
     /// Invokes the `FairTool` with a command that expects a JSON-serialized output for a `FairParsableCommand`
     /// The command will be invoked and the result will be deserialized into the expected structure.
-    private func runToolOutput<C: FairParsableCommand>(_ type: ParsableCommand.Type, cmd: C.Type, _ args: [String]) async throws -> (output: [C.Output], messages: [(MessageKind, [Any?])]) where C.Output : Decodable {
-        let result = try await runTool(type.configuration, C.configuration, args: args)
+    private func runToolOutputStream<C: FairStructuredCommand>(_ commands: CommandConfiguration..., cmd: C.Type, args: [String]) async throws -> (output: [C.Output], messages: [(MessageKind, [Any?])]) where C.Output : Decodable {
+        let result = try await runTool(commands: commands + [cmd.configuration], args: args)
         let output = result.output.joined()
         //dbg("output:", output)
         return (try [C.Output](fromJSON: output.utf8Data, dateDecodingStrategy: .iso8601), result.messages)
@@ -22,7 +29,11 @@ final class FairCommandTests: XCTestCase {
 
     /// Invokes the `FairTool` in-process using the specified arguments
     private func runTool(_ op: CommandConfiguration..., args: [String] = []) async throws -> (output: [String], messages: [ToolMessage]) {
-        let arguments = op.compactMap(\.commandName) + args
+        try await runTool(commands: op, args: args)
+    }
+
+    private func runTool(commands: [CommandConfiguration], args: [String] = []) async throws -> (output: [String], messages: [ToolMessage]) {
+        let arguments = commands.compactMap(\.commandName) + args
 
         let command = try FairToolCommand.parseAsRoot(arguments)
         guard var cmd = command as? FairMsgCommand else {
@@ -145,7 +156,7 @@ final class FairCommandTests: XCTestCase {
 
     /// Runs "fairtool app info <url>" on a remote .ipa file, which it will download and analyze.
     func testArtifactInfoCommandiOS() async throws {
-        let (result, _) = try await runToolOutput(ArtifactCommand.self, cmd: ArtifactCommand.InfoCommand.self, [Self.appDownloadURL(for: "Cloud-Cuckoo", version: nil, platform: .iOS).absoluteString])
+        let (result, _) = try await runToolOutputStream(ArtifactCommand.configuration, cmd: ArtifactCommand.InfoCommand.self, args: [Self.appDownloadURL(for: "Cloud-Cuckoo", version: nil, platform: .iOS).absoluteString])
 
         XCTAssertEqual("app.Cloud-Cuckoo", result.first?.info.object?["CFBundleIdentifier"]?.string)
         XCTAssertEqual(0, result.first?.entitlements?.count, "no entitlements expected in this ios app")
@@ -153,7 +164,7 @@ final class FairCommandTests: XCTestCase {
 
     /// Runs "fairtool app info <url>" on a remote .app .zip file, which it will download and analyze.
     func testArtifactInfoCommandMacOS() async throws {
-        let (result, _) = try await runToolOutput(ArtifactCommand.self, cmd: ArtifactCommand.InfoCommand.self, [Self.appDownloadURL(for: "Cloud-Cuckoo", version: nil, platform: .macOS).absoluteString])
+        let (result, _) = try await runToolOutputStream(ArtifactCommand.configuration, cmd: ArtifactCommand.InfoCommand.self, args: [Self.appDownloadURL(for: "Cloud-Cuckoo", version: nil, platform: .macOS).absoluteString])
 
         XCTAssertEqual("app.Cloud-Cuckoo", result.first?.info.object?["CFBundleIdentifier"]?.string)
         XCTAssertEqual(2, result.first?.entitlements?.count, "expected two entitlements in a fat binary")
@@ -187,14 +198,55 @@ final class FairCommandTests: XCTestCase {
         XCTAssertGreaterThan(count, 0, "expected at least one result")
     }
 
-    func testSourceCreateCommand() async throws {
-        //let args = ["--token", "Tune-Out", "--version", "1.0.2", "--no-upload", "--no-overwrite"]
-        let args = ["--token", "Tune-Out", "--no-upload", "--no-overwrite"] // test without version so we fetch it from the atom feed
+    func testSourceCreateAltStoreCommand() async throws {
+        let netSkipVersion = "1.4.5"
+        let args = ["Tune-Out", "Net-Skip/\(netSkipVersion)", "Skip-Notes"]
 
-        let result = try await runTool(SourceCommand.configuration, SourceCommand.CreateCommand.configuration, SourceCommand.CreateAltStoreCatalogCommand.configuration, args: Array(args))
+        let (output, messages) = try await runToolOutputSingle(SourceCommand.configuration, SourceCommand.CreateCommand.configuration, cmd: SourceCommand.CreateAltStoreCatalogCommand.self, args: Array(args))
 
-        let output = result.output.joined()
+        _ = messages
+        //dbg("output:", output)
+
+        XCTAssertEqual(3, output.apps.count)
+
+        let firstApp = try XCTUnwrap(output.apps.dropFirst(0).first, "catalog should have contained at least one app")
+        XCTAssertEqual("TuneOut", firstApp.name)
+        XCTAssertEqual("org.appfair.app.Tune-Out", firstApp.bundleIdentifier)
+        XCTAssertEqual("other", firstApp.category) // FIXME
+        XCTAssertEqual("1639901758", firstApp.marketplaceID)
+        XCTAssertEqual("Stream internet radio", firstApp.subtitle)
+        XCTAssertEqual(1, firstApp.versions?.count)
+
+        let secondApp = try XCTUnwrap(output.apps.dropFirst(1).first, "catalog should have contained a second app")
+        XCTAssertEqual("NetSkip", secondApp.name)
+        XCTAssertEqual("org.appfair.app.Net-Skip", secondApp.bundleIdentifier)
+        XCTAssertEqual("other", secondApp.category) // FIXME
+        XCTAssertEqual("1640618584", secondApp.marketplaceID)
+        XCTAssertEqual("A humane web browser", secondApp.subtitle)
+        XCTAssertEqual(1, secondApp.versions?.count)
+        XCTAssertEqual(netSkipVersion, secondApp.versions?.first?.version)
+
+        let thirdApp = try XCTUnwrap(output.apps.dropFirst(2).first, "catalog should have contained a third app")
+        XCTAssertEqual("SkipNotes", thirdApp.name)
+        XCTAssertEqual("org.appfair.app.SkipNotes", thirdApp.bundleIdentifier)
+        XCTAssertEqual("other", thirdApp.category) // FIXME
+        XCTAssertEqual("6740916318", thirdApp.marketplaceID)
+        XCTAssertEqual("Simple and secure notes", thirdApp.subtitle)
+        XCTAssertEqual(1, thirdApp.versions?.count)
+    }
+
+    func testSourceCreateFDrdoidCommand() async throws {
+        let netSkipVersion = "1.4.5"
+        let args = ["Tune-Out", "Net-Skip/\(netSkipVersion)", "Skip-Notes"]
+
+        let (output, messages) = try await runToolOutputSingle(SourceCommand.configuration, SourceCommand.CreateCommand.configuration, cmd: SourceCommand.CreateFDroidCatalogCommand.self, args: Array(args))
+
+        _ = messages
+
+        //let output = result.output.joined()
         dbg("output:", output)
+
+        XCTAssertEqual(3, output.packages?.count)
 
         //let catalog: AltCatalog = try SourceCommand.CreateCommand.Output(fromJSON: output.utf8Data, dateDecodingStrategy: .iso8601)
         //dbg("catalog:", try? catalog.toJSON(outputFormatting: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes], dateEncodingStrategy: .iso8601).utf8String)
@@ -204,7 +256,7 @@ final class FairCommandTests: XCTestCase {
         do {
             let result = try await runTool(FairCommand.configuration, FairCommand.ValidateCommand.configuration)
             // TODO:
-            // let result = try await runToolOutput(FairCommand.self, cmd: FairCommand.ValidateCommand.self, "--hub", "appfair/App")
+            // let result = try await runToolOutputStream(FairCommand.self, cmd: FairCommand.ValidateCommand.self, "--hub", "appfair/App")
             XCTAssertFalse(result.messages.isEmpty)
         } catch { // let error as CommandError {
             // the hub key is required
@@ -229,7 +281,7 @@ final class FairCommandTests: XCTestCase {
 //        if !FileManager.default.itemExists(at: URL(fileURLWithPath: stocksPath)) {
 //            throw XCTSkip("no stocks app") // e.g., Linux
 //        }
-        let (result, _) = try await runToolOutput(ArtifactCommand.self, cmd: ArtifactCommand.InfoCommand.self, [stocksPath])
+        let (result, _) = try await runToolOutputStream(ArtifactCommand.configuration, cmd: ArtifactCommand.InfoCommand.self, args: [stocksPath])
 
         XCTAssertEqual("com.apple.stocks", result.first?.info.object?["CFBundleIdentifier"]?.string)
         XCTAssertEqual(2, result.first?.entitlements?.count, "expected two entitlements in a fat binary")
@@ -521,7 +573,7 @@ final class FairCommandTests: XCTestCase {
         """.write(to: xcconfig, atomically: true, encoding: .utf8)
 
         func checkProject(_ args: String...) async throws -> FairConfigureOutput {
-            let results = try await runToolOutput(AppCommand.self, cmd: AppCommand.ConfigureCommand.self, ["--project", projectFolder.path] + args)
+            let results = try await runToolOutputStream(AppCommand.configuration, cmd: AppCommand.ConfigureCommand.self, args: ["--project", projectFolder.path] + args)
             return try XCTUnwrap(results.output.first)
         }
 
