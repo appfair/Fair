@@ -1,5 +1,6 @@
 import Swift
 import FairCore
+import Universal
 import struct Foundation.Data
 
 /// An RSS web feed document outline with a generic `WebFeedAdditions` parameters allowing extension points for the various elements.
@@ -19,7 +20,7 @@ public struct WebFeed<Additions: WebFeedAdditions> {
         try self.init(node: XMLNode.parse(data: data, options: [.reportNamespacePrefixes]))
     }
 
-    private init(node: FairCore.XMLNode) throws {
+    private init(node: XMLNode) throws {
         guard let root = node.elementChildren.first,
               root.elementName == "rss" else {
             throw Errors.noRSSRoot
@@ -52,7 +53,7 @@ public struct WebFeed<Additions: WebFeedAdditions> {
             self.additions = additions
         }
 
-        public init(node: FairCore.XMLNode) throws {
+        public init(node: XMLNode) throws {
             let elements = node.elementChildren.dictionary(keyedBy: \.elementName)
 
             self.title = elements["title"]?.childContentTrimmed
@@ -83,7 +84,7 @@ public struct WebFeed<Additions: WebFeedAdditions> {
                 self.additions = additions
             }
 
-            public init(node: FairCore.XMLNode) throws {
+            public init(node: XMLNode) throws {
                 let elements = node.elementChildren.dictionary(keyedBy: \.elementName)
 
                 self.title = elements["title"]?.childContentTrimmed
@@ -112,7 +113,7 @@ public struct WebFeed<Additions: WebFeedAdditions> {
                 self.additions = additions
             }
 
-            public init(node: FairCore.XMLNode) throws {
+            public init(node: XMLNode) throws {
                 let dict = node.elementDictionary(attributes: true, childNodes: false)
                 self.url = dict["url"]
                 self.length = dict["length"]
@@ -133,11 +134,11 @@ public struct WebFeed<Additions: WebFeedAdditions> {
 
 /// An instance that can be created from an XML node
 public protocol XMLNodeExpressible {
-    init?(node: FairCore.XMLNode) throws
+    init?(node: XMLNode) throws
 }
 
 extension Never : XMLNodeExpressible {
-    public init?(node: FairCore.XMLNode) throws {
+    public init?(node: XMLNode) throws {
         nil
     }
 }
@@ -217,10 +218,10 @@ public enum AppcastWebFeedAdditions : WebFeedAdditions {
         var channel: String?
         var belowVersion: String?
         var ignoreSkippedUpgradesBelowVersion: String?
-        var tags: [FairCore.XMLNode]?
+        var tags: [XMLNode]?
         var deltas: [AppcastFeed.Channel.Enclosure]?
 
-        public init?(node: FairCore.XMLNode) throws {
+        public init?(node: XMLNode) throws {
             let element = { node.childElements(named: $0, namespaceURI: sparkle).first?.childContentTrimmed }
 
             self.version = element("version")
@@ -262,7 +263,7 @@ public enum AppcastWebFeedAdditions : WebFeedAdditions {
         var installationType: String?
         var os: String?
 
-        public init?(node: FairCore.XMLNode) throws {
+        public init?(node: XMLNode) throws {
             let attr = { node.attributeValue(key: $0, namespaceURI: sparkle) }
             self.version = attr("version")
             self.shortVersionString = attr("shortVersionString")

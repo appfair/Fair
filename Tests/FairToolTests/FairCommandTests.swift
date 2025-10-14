@@ -220,8 +220,10 @@ final class FairCommandTests: XCTestCase {
 //    }
 
     func testSourceCreateCommand() async throws {
-        let args = ["--token", "Tune-Out", "--version", "1.0.2", "--no-upload", "--no-overwrite"]
-        let result = try await runTool(SourceCommand.configuration, SourceCommand.CreateCommand.configuration, args: Array(args))
+        //let args = ["--token", "Tune-Out", "--version", "1.0.2", "--no-upload", "--no-overwrite"]
+        let args = ["--token", "Tune-Out", "--no-upload", "--no-overwrite"] // test without version so we fetch it from the atom feed
+
+        let result = try await runTool(SourceCommand.configuration, SourceCommand.CreateCommand.configuration, SourceCommand.CreateAltStoreCatalogCommand.configuration, args: Array(args))
 
         let output = result.output.joined()
         dbg("output:", output)

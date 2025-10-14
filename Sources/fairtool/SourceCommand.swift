@@ -5,23 +5,100 @@ import ArgumentParser
 
 
 public struct SourceCommand : AsyncParsableCommand {
-    public static let experimental = false
-    public static var configuration = CommandConfiguration(commandName: "source",
-                                                           abstract: "App source catalog management commands",
-                                                           shouldDisplay: !experimental,
-                                                           subcommands: [
-                                                            CreateCommand.self,
-                                                            //VerifyCommand.self,
-                                                            //PostReleaseCommand.self,
-                                                           ])
+    public static var configuration = CommandConfiguration(
+        commandName: "source",
+        abstract: "App source catalog management commands",
+        subcommands: [
+            CreateCommand.self,
+            //MergeCommand.self,
+            //VerifyCommand.self,
+            //PostReleaseCommand.self,
+        ])
 
     public init() {
     }
 
+    public struct CreateCommand: AsyncParsableCommand {
+        public static var configuration = CommandConfiguration(
+            commandName: "create",
+            abstract: "Generate a catalog for an app",
+            subcommands: [
+                CreateAltStoreCatalogCommand.self,
+                CreateFDroidCatalogCommand.self,
+            ])
+
+        public init() {
+        }
+    }
+
+    public struct CreateFDroidCatalogCommand: CatalogBuilderCommand {
+        @OptionGroup public var msgOptions: MsgOptions
+        @OptionGroup public var outputOptions: OutputOptions
+        @OptionGroup public var sourceOptions: SourceOptions
+
+        @Option(help: ArgumentHelp("The app token to catalog", valueName: "token"))
+        public var token: String
+
+        @Option(help: ArgumentHelp("The app version to catalog", valueName: "version"))
+        public var version: String?
+
+        public static var configuration = CommandConfiguration(
+            commandName: "fdroid",
+            abstract: "Create an F-Droid catalog source")
+
+        public typealias Output = FDroidIndex
+
+        public init() {
+        }
+
+        public mutating func run() async throws {
+            msg(.info, "creating f-droid catalog")
+
+            let version = try await fetchLatestVersion(unless: self.version)
+            let dataSource = try await fetchSourceZip(version: version)
+            let pathPrefix = (dataSource.paths.first?.pathName ?? "") + "/" // e.g.: "Tune-Out-1.0.2/"
+            //let relativePaths = dataSource.paths.map(\.pathName).map({ $0.dropFirst(pathPrefix.count).description })
+
+            let envFileData = try dataSource.data(atPath: pathPrefix + "Skip.env")
+            let envFile = try EnvFile(data: envFileData)
+
+            func env(key: String) throws -> String {
+                guard let value = envFile[key] else {
+                    throw AppError("Could not load \(key) from Skip.env")
+                }
+                return value
+            }
+
+            //msg(.info, "env file contents: \(envFile.contents)")
+            //let productName = try env(key: "PRODUCT_NAME")
+            //let marketingVersion = try env(key: "MARKETING_VERSION")
+            //let projectVersion = try env(key: "CURRENT_PROJECT_VERSION")
+            //let bundleIdentifier = try env(key: "PRODUCT_BUNDLE_IDENTIFIER")
+            //let packageName = try env(key: "ANDROID_PACKAGE_NAME")
+
+
+            let file = FDroidIndex.Package.FileV1(name: "", sha256: "", size: 0)
+            let manifest = FDroidIndex.Package.Manifest(versionName: "", versionCode: 0)
+            let packageVersion = FDroidIndex.Package.PackageVersion(added: 0, file: file, manifest: manifest)
+
+            let metadata = FDroidIndex.Package.Metadata(added: 0, lastUpdated: 0)
+            let package = FDroidIndex.Package(metadata: metadata, versions: [version: packageVersion])
+
+            var packages: Dictionary<String, FDroidIndex.Package> = [:]
+            packages[token] = package
+
+            let repo = FDroidIndex.Repo(name: FDroidIndex.LocalizedText(), icon: FDroidIndex.LocalizedFile(), address: "", mirrors: [], timestamp: 0)
+            let catalog = FDroidIndex(repo: repo, packages: packages)
+
+            let json = try outputOptions.writeCatalog(catalog)
+            _ = json
+        }
+    }
+
     /// Creates an AltStore source from one or more source folders or zip URLs.
     ///
-    /// Example use: `fairtool source create https://github.com/appfair/Skip-Notes/archive/refs/tags/0.8.6.zip --adpid 412cd63d-180f-4ee0-a06a-accca8fe349e --upload-app-catalog`
-    public struct CreateCommand: FairParsableCommand {
+    /// Example use: `fairtool source create altstore --token Skip-Notes --version 0.8.6 --adpid 412cd63d-180f-4ee0-a06a-accca8fe349e
+    public struct CreateAltStoreCatalogCommand: CatalogBuilderCommand {
         @OptionGroup public var msgOptions: MsgOptions
         @OptionGroup public var outputOptions: OutputOptions
         @OptionGroup public var sourceOptions: SourceOptions
@@ -39,13 +116,12 @@ public struct SourceCommand : AsyncParsableCommand {
         public var token: String
 
         @Option(help: ArgumentHelp("The app version to catalog", valueName: "version"))
-        public var version: String
+        public var version: String?
 
-        public static var configuration = CommandConfiguration(commandName: "create",
-                                                               abstract: "Create a catalog source for the current app",
-                                                               shouldDisplay: !experimental)
+        public static var configuration = CommandConfiguration(
+            commandName: "altstore",
+            abstract: "Create an AltSouce catalog source")
 
-        public static let experimental = false
         public typealias Output = AltCatalog
 
 
@@ -53,8 +129,7 @@ public struct SourceCommand : AsyncParsableCommand {
         }
 
         public mutating func run() async throws {
-            warnExperimental(Self.experimental)
-            msg(.info, "creating catalog")
+            msg(.info, "creating altstore catalog")
             var catalog = AltCatalog()
             catalog.name = sourceOptions.catalogName
             catalog.subtitle = sourceOptions.catalogSubtitle
@@ -63,13 +138,14 @@ public struct SourceCommand : AsyncParsableCommand {
             catalog.iconURL = sourceOptions.catalogIconURL
             catalog.tintColor = sourceOptions.catalogTintColor
 
-            // old-style way
-//            var apps: [(appToken: String, appItem: AltCatalogAppItem)] = []
-//            for source in sources {
-//                msg(.info, "analyzing source: \(source)")
-//                let item = try await createAppItem(path: source)
-//                apps.append(item)
-//            }
+            // old-style way (with multiple apps):
+            //var apps: [(appToken: String, appItem: AltCatalogAppItem)] = []
+            //for source in sources {
+            //    msg(.info, "analyzing source: \(source)")
+            //    let item = try await createAppItem(path: source)
+            //    apps.append(item)
+            //}
+
             let item = try await createAppItem(token: token, version: version)
             let apps = [item]
             catalog.apps = apps.map(\.appItem)
@@ -97,33 +173,17 @@ public struct SourceCommand : AsyncParsableCommand {
                     try await githubReleaseUpload(appToken: sourceItem.appToken, version: appVersion, paths: [path])
                 }
             } else {
+                // no upload, just write out the catalog
                 let json = try outputOptions.writeCatalog(catalog)
                 _ = json
             }
         }
 
-        func createAppItem(token appToken: String, version: String) async throws -> (appToken: String, appItem: AltCatalogAppItem) {
-            guard let repoURL = URL(string: "\(sourceOptions.hubRepository)/\(appToken)") else {
-                throw AppError("Could not create repo URL from: \(appToken)")
-            }
-
-            // e.g.: https://delivert.appfair.net/Tune-Out/archive/refs/tags/1.0.2.zip
-            let sourceArchiveURL = repoURL.appending(path: "archive/refs/tags/\(version).zip")
-
-            msg(.info, "checking sourceArchiveURL: \(sourceArchiveURL.absoluteString)")
-            let dataSource: any DataWrapper
-            let pathPrefix: String
-            let relativePaths: [String] // the paths that will be relative to the pathPrefix
-
-            msg(.info, "downloading sourceArchiveURL: \(sourceArchiveURL.absoluteString)")
-            let (localURL, response) = try await prf("download: \(sourceArchiveURL.absoluteURL)") {
-                try await URLSession.shared.downloadFile(for: URLRequest(url: sourceArchiveURL, cachePolicy: .returnCacheDataElseLoad))
-            }
-
-            try response.validateHTTPCode()
-            dataSource = try ZipArchiveDataWrapper(archive: ZipArchive(url: localURL, accessMode: .read))
-            pathPrefix = (dataSource.paths.first?.pathName ?? "") + "/" // e.g.: "Tune-Out-1.0.2/"
-            relativePaths = dataSource.paths.map(\.pathName).map({ $0.dropFirst(pathPrefix.count).description })
+        func createAppItem(token appToken: String, version releaseVersion: String?) async throws -> (appToken: String, appItem: AltCatalogAppItem) {
+            let version = try await fetchLatestVersion(unless: self.version)
+            let dataSource = try await fetchSourceZip(version: version)
+            let pathPrefix = (dataSource.paths.first?.pathName ?? "") + "/" // e.g.: "Tune-Out-1.0.2/"
+            let relativePaths = dataSource.paths.map(\.pathName).map({ $0.dropFirst(pathPrefix.count).description })
 
             let envFileData = try dataSource.data(atPath: pathPrefix + "Skip.env")
             let envFile = try EnvFile(data: envFileData)
@@ -147,23 +207,20 @@ public struct SourceCommand : AsyncParsableCommand {
             //    throw AppError("Could not load app token from from bundleIdentifier in Skip.env")
             //}
 
-            guard let rawContentURL = URL(string: "\(sourceOptions.hubContent)/\(appToken)/refs/tags/\(marketingVersion)") else {
-                throw AppError("Could not create raw content URL from: \(appToken)")
-            }
-
-            let releaseBaseURL = repoURL.appending(components: "releases", "download", marketingVersion)
-
             //msg(.info, "productName: \(productName)")
 
             let releaseDate = Calendar.current.startOfDay(for: Date()).ISO8601Format() // FIXME: use the date of the release
 
-            func loadFastlaneMetadata(_ path: String, locale: String = "en-US") throws -> String? {
+            func loadDarwinFastlaneMetadata(_ path: String, locale: String = "en-US") throws -> String? {
                 String(data: try dataSource.data(atPath: pathPrefix + "Darwin/fastlane/metadata/\(locale)/\(path)"), encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
             }
 
-            let localizedDescription = try loadFastlaneMetadata("description.txt")
-            let subtitle = try loadFastlaneMetadata("subtitle.txt")
-            let releaseNotes = try loadFastlaneMetadata("release_notes.txt")
+            let localizedDescription = try loadDarwinFastlaneMetadata("description.txt")
+            let subtitle = try loadDarwinFastlaneMetadata("subtitle.txt")
+            let releaseNotes = try loadDarwinFastlaneMetadata("release_notes.txt")
+
+            let releaseBaseURL = try self.repositoryURL.appending(components: "releases", "download", version)
+            let rawContentURL = try self.contentURL.appending(components: appToken, "refs", "tags", version)
 
             let manifestURL = releaseBaseURL.appending(path: "manifest.json")
             let manifest: ADPManifest
@@ -176,7 +233,7 @@ public struct SourceCommand : AsyncParsableCommand {
 
                 msg(.info, "downloading ADP for id \(adpid)")
                 guard let marketplaceEndpoint = URL(string: sourceOptions.marketplaceService) else {
-                    throw AppError("AltStoreEndpoing was invalid: \(sourceOptions.marketplaceService)")
+                    throw AppError("AltStoreEndpoint was invalid: \(sourceOptions.marketplaceService)")
                 }
                 let downloadFile = try await MarketplaceEndpoint(endpointBase: marketplaceEndpoint).download(adpid: adpid, logger: { msg(.info, $0) })
                 defer { try? FileManager.default.removeItem(at: downloadFile) }
@@ -335,4 +392,75 @@ public protocol NewsItemFormat {
     var postBody: String? { get }
     var postAppID: String? { get }
     var postURL: String? { get }
+}
+
+protocol CatalogBuilderCommand : FairParsableCommand {
+    var token: String { get }
+    var version: String? { get }
+
+    var sourceOptions: SourceOptions { get }
+}
+
+extension CatalogBuilderCommand {
+    var repositoryBaseURL: URL {
+        get throws {
+            guard let repoURL = URL(string: sourceOptions.hubRepository) else {
+                throw AppError("Could not create repository URL from: \(sourceOptions.hubRepository)")
+            }
+            return repoURL
+        }
+    }
+
+    var contentURL: URL {
+        get throws {
+            guard let repoURL = URL(string: sourceOptions.hubContent) else {
+                throw AppError("Could not create content URL from: \(sourceOptions.hubContent)")
+            }
+            return repoURL
+        }
+    }
+
+    var repositoryURL: URL {
+        get throws {
+            try repositoryBaseURL.appending(path: token)
+        }
+    }
+
+    /// Get the latest version by parsing the RSS for the hub's releases
+    func fetchLatestVersion(unless existingVersion: String?) async throws -> String {
+        if let existingVersion { return existingVersion }
+        let feedURL = try repositoryURL.appending(path: "releases.atom")
+        let (atomData, _) = try await URLSession.shared.fetch(request: URLRequest(url: feedURL))
+
+        let atom = try AtomFeed(xmlData: atomData)
+        guard let latestRelease = atom.entries.first else {
+            throw AppError("No entries in latest RSS feed for releases")
+        }
+
+        // the GitHub Atom feed doesn't list the actual tag directly, so we parse it from the link in the entry
+        guard let link = latestRelease.links?.first(where: { $0.rel == "alternate" })?.href,
+              let linkURL = URL(string: link) else {
+            throw AppError("No matching links in latest RSS feed for release")
+        }
+
+        let latestVersion = linkURL.lastPathComponent
+        msg(.info, "fetched latest version for \(token): \(latestVersion)")
+        return latestVersion
+    }
+
+    func fetchSourceZip(version: String) async throws -> ZipArchiveDataWrapper {
+        // e.g.: https://delivery.appfair.net/Tune-Out/archive/refs/tags/1.0.2.zip
+        let sourceArchiveURL = try self.repositoryURL.appending(components: "archive", "refs", "tags", version + ".zip")
+
+        //msg(.info, "checking sourceArchiveURL: \(sourceArchiveURL.absoluteString)")
+        msg(.info, "downloading sourceArchiveURL: \(sourceArchiveURL.absoluteString)")
+        let (localURL, response) = try await prf("download: \(sourceArchiveURL.absoluteURL)") {
+            try await URLSession.shared.downloadFile(for: URLRequest(url: sourceArchiveURL, cachePolicy: .returnCacheDataElseLoad))
+        }
+
+        try response.validateHTTPCode()
+        let dataSource = try ZipArchiveDataWrapper(archive: ZipArchive(url: localURL, accessMode: .read))
+
+        return dataSource
+    }
 }

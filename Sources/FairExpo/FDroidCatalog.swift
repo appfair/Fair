@@ -22,18 +22,18 @@ public struct FDroidEndpoint {
 /// [https://gitlab.com/fdroid/fdroidclient/-/tree/master/libs/index/src/commonMain/kotlin/org/fdroid/index/v2]()
 ///
 /// Python generation code at: [https://gitlab.com/fdroid/fdroidserver/-/blob/master/fdroidserver/index.py#L516]()
-struct FDroidIndex : Codable, Equatable {
+public struct FDroidIndex : Codable, Equatable {
     /// Metadata about the repository
-    var repo: Repo
+    public var repo: Repo
 
     /// The list of packages (i.e., apps) that make up the catalog
-    var packages: Dictionary<String, Package>
+    public var packages: Dictionary<String, Package>
 
     /// A map of language code to the translated text. E.g.: `["en-US": "Name", "fr-FR": "Nom"]`
-    typealias LocalizedText = Dictionary<String, String>
+    public typealias LocalizedText = Dictionary<String, String>
 
     /// A map of language code to the file resource. E.g.: `["en-US": "images/icon/english.svg", "fr-FR": "images/icon/french.svg"]`
-    typealias LocalizedFile = Dictionary<String, File>
+    public typealias LocalizedFile = Dictionary<String, File>
 
     /// A map of language code to a file resource set.
     ///
@@ -49,115 +49,223 @@ struct FDroidIndex : Codable, Equatable {
     /// ]
     /// ```
     ///
-    typealias LocalizedFileList = Dictionary<String, Array<File>>
+    public typealias LocalizedFileList = Dictionary<String, Array<File>>
+
+    public init(repo: Repo, packages: Dictionary<String, Package>) {
+        self.repo = repo
+        self.packages = packages
+    }
 
     /// A reference to a resource path
-    struct File : Codable, Equatable {
-        var name: String?
-        var sha256: String?
-        var size: Int64?
+    public struct File : Codable, Equatable {
+        public var name: String?
+        public var sha256: String?
+        public var size: Int64?
+
+        public init(name: String? = nil, sha256: String? = nil, size: Int64? = nil) {
+            self.name = name
+            self.sha256 = sha256
+            self.size = size
+        }
     }
 
-    struct Entry : Codable, Equatable {
-        var timestamp: Int64
-        var version: Int64
-        var maxAge: Int?
-        var index: EntryFile
-        var diffs: Dictionary<String, EntryFile>
+    public struct Entry : Codable, Equatable {
+        public var timestamp: Int64
+        public var version: Int64
+        public var maxAge: Int?
+        public var index: EntryFile
+        public var diffs: Dictionary<String, EntryFile>
+
+        public init(timestamp: Int64, version: Int64, maxAge: Int? = nil, index: EntryFile, diffs: Dictionary<String, EntryFile>) {
+            self.timestamp = timestamp
+            self.version = version
+            self.maxAge = maxAge
+            self.index = index
+            self.diffs = diffs
+        }
     }
 
-    struct EntryFile : Codable, Equatable {
-        var name: String
-        var sha256: String
-        var size: Int64
-        var numPackages: Int
+    public struct EntryFile : Codable, Equatable {
+        public var name: String
+        public var sha256: String
+        public var size: Int64
+        public var numPackages: Int
+
+        public init(name: String, sha256: String, size: Int64, numPackages: Int) {
+            self.name = name
+            self.sha256 = sha256
+            self.size = size
+            self.numPackages = numPackages
+        }
     }
 
     /// Metadata about the package repository
-    struct Repo : Codable, Equatable {
-        var name: LocalizedText
-        var icon: LocalizedFile
-        var address: String
-        var webBaseUrl: String?
-        var description: LocalizedText?
-        var mirrors: Array<Mirror>
-        var timestamp: Int64
-        var antiFeatures: Dictionary<String, AntiFeature>?
+    public struct Repo : Codable, Equatable {
+        public var name: LocalizedText
+        public var icon: LocalizedFile
+        public var address: String
+        public var webBaseUrl: String?
+        public var description: LocalizedText?
+        public var mirrors: Array<Mirror>
+        public var timestamp: Int64
+        public var antiFeatures: Dictionary<String, AntiFeature>?
         /// A mapping of the category name of metadata about the category
-        var categories: Dictionary<String, Category>?
-        var releaseChannels: Dictionary<String, ReleaseChannel>?
+        public var categories: Dictionary<String, Category>?
+        public var releaseChannels: Dictionary<String, ReleaseChannel>?
+
+        public init(name: LocalizedText, icon: LocalizedFile, address: String, webBaseUrl: String? = nil, description: LocalizedText? = nil, mirrors: Array<Mirror>, timestamp: Int64, antiFeatures: Dictionary<String, AntiFeature>? = nil, categories: Dictionary<String, Category>? = nil, releaseChannels: Dictionary<String, ReleaseChannel>? = nil) {
+            self.name = name
+            self.icon = icon
+            self.address = address
+            self.webBaseUrl = webBaseUrl
+            self.description = description
+            self.mirrors = mirrors
+            self.timestamp = timestamp
+            self.antiFeatures = antiFeatures
+            self.categories = categories
+            self.releaseChannels = releaseChannels
+        }
     }
 
-    struct Mirror : Codable, Equatable {
-        var url: String
-        var location: String?
-        var isPrimary: Bool? // undocumented
+    public struct Mirror : Codable, Equatable {
+        public var url: String
+        public var location: String?
+        public var isPrimary: Bool? // undocumented
+
+        public init(url: String, location: String? = nil, isPrimary: Bool? = nil) {
+            self.url = url
+            self.location = location
+            self.isPrimary = isPrimary
+        }
     }
 
 
     /// Flag for potentially undesirable features (e.g., "Ads", "DisabledAlgorithm", "KnownVuln", "NSFW", "NoSourceSince", "NonFreeAdd", "NonFreeAssets", "NonFreeDep", "NonFreeNet", "Tracking", "UpstreamNonFree")
-    struct AntiFeature : Codable, Equatable {
-        var icon: LocalizedFile?
-        var name: LocalizedText?
-        var description: LocalizedText?
+    public struct AntiFeature : Codable, Equatable {
+        public var icon: LocalizedFile?
+        public var name: LocalizedText?
+        public var description: LocalizedText?
+
+        public init(icon: LocalizedFile? = nil, name: LocalizedText? = nil, description: LocalizedText? = nil) {
+            self.icon = icon
+            self.name = name
+            self.description = description
+        }
     }
 
     /// A categorization of an app (e.g, "Connectivity", "Development", "Games", "Graphics", "Internet", "Money", "Multimedia", "Navigation", "Phone & SMS", "Reading", "Science & Education", "Security", "Sports & Health", "System", "Theming", "Time", "Writing")
-    struct Category : Codable, Equatable {
-        var icon: LocalizedFile?
-        var name: LocalizedText?
-        var description: LocalizedText?
+    public struct Category : Codable, Equatable {
+        public var icon: LocalizedFile?
+        public var name: LocalizedText?
+        public var description: LocalizedText?
+
+        public init(icon: LocalizedFile? = nil, name: LocalizedText? = nil, description: LocalizedText? = nil) {
+            self.icon = icon
+            self.name = name
+            self.description = description
+        }
     }
 
-    struct ReleaseChannel : Codable, Equatable {
-        var name: LocalizedText
-        var description: LocalizedText?
+    public struct ReleaseChannel : Codable, Equatable {
+        public var name: LocalizedText
+        public var description: LocalizedText?
+
+        public init(name: LocalizedText, description: LocalizedText? = nil) {
+            self.name = name
+            self.description = description
+        }
     }
 
-    struct Package : Codable, Equatable {
-        var metadata: Metadata
+    public struct Package : Codable, Equatable {
+        public var metadata: Metadata
         /// A of versions, keyed by the sha256 of the primary artifact.
-        var versions: Dictionary<String, PackageVersion>
+        public var versions: Dictionary<String, PackageVersion>
 
-        struct Metadata : Codable, Equatable {
-            var name: LocalizedText?
-            var summary: LocalizedText?
-            var description: LocalizedText?
-            var added: Int64
-            var lastUpdated: Int64
-            var webSite: String?
-            var changelog: String?
-            var license: String?
-            var sourceCode: String?
-            var issueTracker: String?
-            var translation: String?
-            var preferredSigner: String?
-            var categories: Array<String>?
-            var authorName: String?
-            var authorEmail: String?
-            var authorWebSite: String?
-            var authorPhone: String?
-            var donate: Array<String>?
-            var liberapayID: String?
-            var liberapay: String?
-            var openCollective: String?
-            var bitcoin: String?
-            var litecoin: String?
-            var flattrID: String?
-            var icon: LocalizedFile?
-            var featureGraphic: LocalizedFile?
-            var promoGraphic: LocalizedFile?
-            var tvBanner: LocalizedFile?
-            var video: LocalizedText?
-            var screenshots: Screenshots?
+        public init(metadata: Metadata, versions: Dictionary<String, PackageVersion>) {
+            self.metadata = metadata
+            self.versions = versions
         }
 
-        struct Screenshots : Codable, Equatable {
-            var phone: LocalizedFileList?
-            var sevenInch: LocalizedFileList?
-            var tenInch: LocalizedFileList?
-            var wear: LocalizedFileList?
-            var tv: LocalizedFileList?
+        public struct Metadata : Codable, Equatable {
+            public var name: LocalizedText?
+            public var summary: LocalizedText?
+            public var description: LocalizedText?
+            public var added: Int64
+            public var lastUpdated: Int64
+            public var webSite: String?
+            public var changelog: String?
+            public var license: String?
+            public var sourceCode: String?
+            public var issueTracker: String?
+            public var translation: String?
+            public var preferredSigner: String?
+            public var categories: Array<String>?
+            public var authorName: String?
+            public var authorEmail: String?
+            public var authorWebSite: String?
+            public var authorPhone: String?
+            public var donate: Array<String>?
+            public var liberapayID: String?
+            public var liberapay: String?
+            public var openCollective: String?
+            public var bitcoin: String?
+            public var litecoin: String?
+            public var flattrID: String?
+            public var icon: LocalizedFile?
+            public var featureGraphic: LocalizedFile?
+            public var promoGraphic: LocalizedFile?
+            public var tvBanner: LocalizedFile?
+            public var video: LocalizedText?
+            public var screenshots: Screenshots?
+
+            public init(name: LocalizedText? = nil, summary: LocalizedText? = nil, description: LocalizedText? = nil, added: Int64, lastUpdated: Int64, webSite: String? = nil, changelog: String? = nil, license: String? = nil, sourceCode: String? = nil, issueTracker: String? = nil, translation: String? = nil, preferredSigner: String? = nil, categories: Array<String>? = nil, authorName: String? = nil, authorEmail: String? = nil, authorWebSite: String? = nil, authorPhone: String? = nil, donate: Array<String>? = nil, liberapayID: String? = nil, liberapay: String? = nil, openCollective: String? = nil, bitcoin: String? = nil, litecoin: String? = nil, flattrID: String? = nil, icon: LocalizedFile? = nil, featureGraphic: LocalizedFile? = nil, promoGraphic: LocalizedFile? = nil, tvBanner: LocalizedFile? = nil, video: LocalizedText? = nil, screenshots: Screenshots? = nil) {
+                self.name = name
+                self.summary = summary
+                self.description = description
+                self.added = added
+                self.lastUpdated = lastUpdated
+                self.webSite = webSite
+                self.changelog = changelog
+                self.license = license
+                self.sourceCode = sourceCode
+                self.issueTracker = issueTracker
+                self.translation = translation
+                self.preferredSigner = preferredSigner
+                self.categories = categories
+                self.authorName = authorName
+                self.authorEmail = authorEmail
+                self.authorWebSite = authorWebSite
+                self.authorPhone = authorPhone
+                self.donate = donate
+                self.liberapayID = liberapayID
+                self.liberapay = liberapay
+                self.openCollective = openCollective
+                self.bitcoin = bitcoin
+                self.litecoin = litecoin
+                self.flattrID = flattrID
+                self.icon = icon
+                self.featureGraphic = featureGraphic
+                self.promoGraphic = promoGraphic
+                self.tvBanner = tvBanner
+                self.video = video
+                self.screenshots = screenshots
+            }
+        }
+
+        public struct Screenshots : Codable, Equatable {
+            public var phone: LocalizedFileList?
+            public var sevenInch: LocalizedFileList?
+            public var tenInch: LocalizedFileList?
+            public var wear: LocalizedFileList?
+            public var tv: LocalizedFileList?
+
+            public init(phone: LocalizedFileList? = nil, sevenInch: LocalizedFileList? = nil, tenInch: LocalizedFileList? = nil, wear: LocalizedFileList? = nil, tv: LocalizedFileList? = nil) {
+                self.phone = phone
+                self.sevenInch = sevenInch
+                self.tenInch = tenInch
+                self.wear = wear
+                self.tv = tv
+            }
         }
 
         // public interface PackageVersion {
@@ -168,20 +276,36 @@ struct FDroidIndex : Codable, Equatable {
         //     public val hasKnownVulnerability: Boolean
         // }
 
-        struct PackageVersion : Codable, Equatable {
-            var added: Int64
-            var file: FileV1
-            var src: File?
-            var manifest: Manifest
-            var releaseChannels: Array<String>?
-            var antiFeatures: Dictionary<String, LocalizedText>?
-            var whatsNew: LocalizedText?
+        public struct PackageVersion : Codable, Equatable {
+            public var added: Int64
+            public var file: FileV1
+            public var src: File?
+            public var manifest: Manifest
+            public var releaseChannels: Array<String>?
+            public var antiFeatures: Dictionary<String, LocalizedText>?
+            public var whatsNew: LocalizedText?
+
+            public init(added: Int64, file: FileV1, src: File? = nil, manifest: Manifest, releaseChannels: Array<String>? = nil, antiFeatures: Dictionary<String, LocalizedText>? = nil, whatsNew: LocalizedText? = nil) {
+                self.added = added
+                self.file = file
+                self.src = src
+                self.manifest = manifest
+                self.releaseChannels = releaseChannels
+                self.antiFeatures = antiFeatures
+                self.whatsNew = whatsNew
+            }
         }
 
-        struct FileV1 : Codable, Equatable {
-            var name: String
-            var sha256: String
-            var size: Int64?
+        public struct FileV1 : Codable, Equatable {
+            public var name: String
+            public var sha256: String
+            public var size: Int64?
+
+            public init(name: String, sha256: String, size: Int64? = nil) {
+                self.name = name
+                self.sha256 = sha256
+                self.size = size
+            }
         }
 
         // public interface PackageManifest {
@@ -191,35 +315,66 @@ struct FDroidIndex : Codable, Equatable {
         //     public val nativecode: List<String>?
         // }
 
-        struct Manifest : Codable, Equatable {
-            var versionName: String
-            var versionCode: Int64
-            var usesSdk: UsesSdk?
-            var maxSdkVersion: Int?
-            var signer: Signer?
-            var usesPermission: Array<Permission>?
-            var usesPermissionSdk23: Array<Permission>?
-            var nativecode: Array<String>?
-            var features: Array<Feature>?
+        public struct Manifest : Codable, Equatable {
+            public var versionName: String
+            public var versionCode: Int64
+            public var usesSdk: UsesSdk?
+            public var maxSdkVersion: Int?
+            public var signer: Signer?
+            public var usesPermission: Array<Permission>?
+            public var usesPermissionSdk23: Array<Permission>?
+            public var nativecode: Array<String>?
+            public var features: Array<Feature>?
+
+            public init(versionName: String, versionCode: Int64, usesSdk: UsesSdk? = nil, maxSdkVersion: Int? = nil, signer: Signer? = nil, usesPermission: Array<Permission>? = nil, usesPermissionSdk23: Array<Permission>? = nil, nativecode: Array<String>? = nil, features: Array<Feature>? = nil) {
+                self.versionName = versionName
+                self.versionCode = versionCode
+                self.usesSdk = usesSdk
+                self.maxSdkVersion = maxSdkVersion
+                self.signer = signer
+                self.usesPermission = usesPermission
+                self.usesPermissionSdk23 = usesPermissionSdk23
+                self.nativecode = nativecode
+                self.features = features
+            }
         }
 
-        struct UsesSdk : Codable, Equatable {
-            var minSdkVersion: Int
-            var targetSdkVersion: Int
+        public struct UsesSdk : Codable, Equatable {
+            public var minSdkVersion: Int
+            public var targetSdkVersion: Int
+
+            public init(minSdkVersion: Int, targetSdkVersion: Int) {
+                self.minSdkVersion = minSdkVersion
+                self.targetSdkVersion = targetSdkVersion
+            }
         }
 
-        struct Signer : Codable, Equatable {
-            var sha256: Array<String>
-            var hasMultipleSigners: Bool?
+        public struct Signer : Codable, Equatable {
+            public var sha256: Array<String>
+            public var hasMultipleSigners: Bool?
+
+            public init(sha256: Array<String>, hasMultipleSigners: Bool? = nil) {
+                self.sha256 = sha256
+                self.hasMultipleSigners = hasMultipleSigners
+            }
         }
 
-        struct Permission : Codable, Equatable {
-            var name: String
-            var maxSdkVersion: Int?
+        public struct Permission : Codable, Equatable {
+            public var name: String
+            public var maxSdkVersion: Int?
+
+            public init(name: String, maxSdkVersion: Int? = nil) {
+                self.name = name
+                self.maxSdkVersion = maxSdkVersion
+            }
         }
 
-        struct Feature : Codable, Equatable {
-            var name: String
+        public struct Feature : Codable, Equatable {
+            public var name: String
+
+            public init(name: String) {
+                self.name = name
+            }
         }
     }
 }

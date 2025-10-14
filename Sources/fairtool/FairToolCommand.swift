@@ -318,7 +318,7 @@ public struct OutputOptions: ParsableArguments {
 }
 
 extension OutputOptions {
-    func writeCatalog(_ catalog: AltCatalog) throws -> Data {
+    func writeCatalog<T: Encodable>(_ catalog: T) throws -> Data {
         let json = try catalog.toJSON(outputFormatting: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes], dateEncodingStrategy: .iso8601, dataEncodingStrategy: .base64)
         try self.write(json)
         return json
