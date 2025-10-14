@@ -87,7 +87,7 @@ public struct SourceCommand : AsyncParsableCommand {
             var packages: Dictionary<String, FDroidIndex.Package> = [:]
             packages[token] = package
 
-            let repo = FDroidIndex.Repo(name: FDroidIndex.LocalizedText(), icon: FDroidIndex.LocalizedFile(), address: "", mirrors: [], timestamp: 0)
+            let repo = FDroidIndex.Repo(name: ["en-US": "name"], icon: ["en-US": .init(name: "images/icon/english.svg")], address: "", timestamp: 0)
             let catalog = FDroidIndex(repo: repo, packages: packages)
 
             let json = try outputOptions.writeCatalog(catalog)

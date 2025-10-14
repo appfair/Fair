@@ -10,15 +10,6 @@ public let appfairName = "appfair"
 
 public let appfairRoot = URL(string: "https://appfair.net")!
 
-/// The canonical location of the catalog for the Fair Ground
-public let appfairCatalogURLMacOS = URL(string: "fairapps-macos.json", relativeTo: appfairRoot)!
-
-/// The canonical location of the iOS catalog for the Fair Ground
-public let appfairCatalogURLIOS = URL(string: "fairapps-ios.json", relativeTo: appfairRoot)!
-
-/// The canonical location of the enhanced cask app metadata
-public let appfairCaskAppsURL = URL(string: "appcasks.json", relativeTo: appfairRoot)!
-
 /// A Fair Ground based on an online git service such as GitHub or GitLab.
 public struct FairHub : GraphQLEndpointService {
     /// The root of the FairGround-compatible service

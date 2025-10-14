@@ -27,7 +27,7 @@ public struct FDroidIndex : Codable, Equatable {
     public var repo: Repo
 
     /// The list of packages (i.e., apps) that make up the catalog
-    public var packages: Dictionary<String, Package>
+    public var packages: Dictionary<String, Package>?
 
     /// A map of language code to the translated text. E.g.: `["en-US": "Name", "fr-FR": "Nom"]`
     public typealias LocalizedText = Dictionary<String, String>
@@ -51,18 +51,18 @@ public struct FDroidIndex : Codable, Equatable {
     ///
     public typealias LocalizedFileList = Dictionary<String, Array<File>>
 
-    public init(repo: Repo, packages: Dictionary<String, Package>) {
+    public init(repo: Repo, packages: Dictionary<String, Package>?) {
         self.repo = repo
         self.packages = packages
     }
 
     /// A reference to a resource path
     public struct File : Codable, Equatable {
-        public var name: String?
+        public var name: String
         public var sha256: String?
         public var size: Int64?
 
-        public init(name: String? = nil, sha256: String? = nil, size: Int64? = nil) {
+        public init(name: String, sha256: String? = nil, size: Int64? = nil) {
             self.name = name
             self.sha256 = sha256
             self.size = size
@@ -106,14 +106,14 @@ public struct FDroidIndex : Codable, Equatable {
         public var address: String
         public var webBaseUrl: String?
         public var description: LocalizedText?
-        public var mirrors: Array<Mirror>
+        public var mirrors: Array<Mirror>?
         public var timestamp: Int64
         public var antiFeatures: Dictionary<String, AntiFeature>?
         /// A mapping of the category name of metadata about the category
         public var categories: Dictionary<String, Category>?
         public var releaseChannels: Dictionary<String, ReleaseChannel>?
 
-        public init(name: LocalizedText, icon: LocalizedFile, address: String, webBaseUrl: String? = nil, description: LocalizedText? = nil, mirrors: Array<Mirror>, timestamp: Int64, antiFeatures: Dictionary<String, AntiFeature>? = nil, categories: Dictionary<String, Category>? = nil, releaseChannels: Dictionary<String, ReleaseChannel>? = nil) {
+        public init(name: LocalizedText, icon: LocalizedFile, address: String, webBaseUrl: String? = nil, description: LocalizedText? = nil, mirrors: Array<Mirror>? = nil, timestamp: Int64, antiFeatures: Dictionary<String, AntiFeature>? = nil, categories: Dictionary<String, Category>? = nil, releaseChannels: Dictionary<String, ReleaseChannel>? = nil) {
             self.name = name
             self.icon = icon
             self.address = address
@@ -129,12 +129,12 @@ public struct FDroidIndex : Codable, Equatable {
 
     public struct Mirror : Codable, Equatable {
         public var url: String
-        public var location: String?
+        public var countryCode: String?
         public var isPrimary: Bool? // undocumented
 
-        public init(url: String, location: String? = nil, isPrimary: Bool? = nil) {
+        public init(url: String, countryCode: String? = nil, isPrimary: Bool? = nil) {
             self.url = url
-            self.location = location
+            self.countryCode = countryCode
             self.isPrimary = isPrimary
         }
     }

@@ -139,35 +139,6 @@ final class FairHubTests: XCTestCase {
         XCTAssertEqual(false, sig.wasSignedByGitHub)
     }
 
-//    func testFetchSponsorshipListings() async throws {
-//        if runningFromCI || true { // not permitted with default action token: GraphQLError(message: "Resource not accessible by integration", type: Optional("FORBIDDEN"), path: Optional(["repository", "owner", "sponsorsListing"])
-//            throw XCTSkip("disabled to reduce API load")
-//        }
-//
-//        let hub = try Self.hub(skipNoAuth: true)
-//
-//        do {
-//            let fundingSources = try await Self.hub(skipNoAuth: true).buildFundingSources(owner: appfairName, baseRepository: baseFairgroundRepoName)
-//            let response = try await hub.request(FairHub.GetSponsorsQuery(owner: appfairName, name: baseFairgroundRepoName)).get().data
-//            XCTAssertLessThan(20, response.repository.forks.totalCount ?? 0)
-//
-//            XCTAssertEqual("The App Fair!", response.repository.owner.name)
-//
-//
-//            do {
-//                let goal = try XCTUnwrap(fundingSources.first?.goals.first, "missing goal")
-//                XCTAssertEqual("TOTAL_SPONSORS_COUNT", goal.kind)
-//                XCTAssertEqual("100 sponsors", goal.title)
-//                XCTAssertEqual(100, goal.targetValue)
-//                //XCTAssertEqual(0, goal.percentComplete)
-//                //XCTAssertEqual("Attaining our sponsorship goal will enable us to set out a firm roadmap for version 1.0 of the project, as well as break ground on implementing support for additional platforms and integrations.", goal.description)
-//            }
-//        } catch {
-//            //print("error: \(error)")
-//            XCTFail("error: \(error)")
-//        }
-//    }
-
     func testCatalogQuery() async throws {
         if runningFromCI {
             throw XCTSkip("disabled to reduce API load")
@@ -204,187 +175,62 @@ final class FairHubTests: XCTestCase {
         }
     }
 
-    /// Debugging slow connections to GH API
-//    func XXXtestGHAPISpeed() async throws {
-//        let token = wip("XXX")
-//        var req = URLRequest(url: URL(string: "https://api.github.com/graphql")!)
-//        req.addValue("token \(token)", forHTTPHeaderField: "Authorization")
-//        req.addValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
-//        req.httpMethod = "POST"
-//        req.httpBody = #"{"query":"query { viewer { login } }"}  "#.data(using: .utf8)
-//
-//        // dbg("requesting:", req.cURL(pretty: false))
-//        let t1 = DispatchTime.now().uptimeNanoseconds
-//        var response: URLResponse?
-//        let data = try NSURLConnection.sendSynchronousRequest(req, returning: &response)
-//        //let (data, response) = try await URLSession.shared.data(for: req)
-//        let t2 = DispatchTime.now().uptimeNanoseconds
-//        print("response in:", Double(t2 - t1) / 1_000_000_000, data.count, response)
-//    }
-
-//    func testIngestCatalogData() throws {
-//        var app = AltCatalogAppItem(name: "X", bundleIdentifier: "X", downloadURL: URL(string: "about:blank")!)
-//        XCTAssertTrue(try app.ingest(json: #"```{ "localizedDescription": "XYZ" }```"#))
-//        XCTAssertEqual("XYZ", app.localizedDescription)
-//        XCTAssertTrue(try app.ingest(json: #"```json { "localizedDescription": "ABC" }```"#))
-//        XCTAssertEqual("ABC", app.localizedDescription)
-//        XCTAssertTrue(try app.ingest(json: #"```{ "localizedDescription": "XYZ", "tintColor": "AABBCC" }```"#))
-//        XCTAssertEqual("AABBCC", app.tintColor)
-//    }
-//
-//    func testBuildAppCasks() async throws {
-//        if runningFromCI {
-//            // this quickly exhausts the API limit for the default actions token
-//            throw XCTSkip("disabled to reduce API load")
-//        }
-//
-//        let _ = try Self.hub(skipNoAuth: true) // just to throw a skipwhen there is no token
-//
-//        let api = HomebrewAPI(caskAPIEndpoint: HomebrewAPI.defaultEndpoint)
-//        let maxApps: Int? = 123 // wip(3808) // 123 // _000_000
-//        let catalog = try await Self.hub(skipNoAuth: true).buildAppCasks(owner: appfairName, catalogName: "Catalog", catalogIdentifier: "net.catalog.id", baseRepository: "appcasks", topicName: "appfair-cask", starrerName: "appfairbot", maxApps: maxApps, mergeCasksURL: api.caskList, caskStatsURL: api.caskStats30, boostFactor: 1000, caskQueryCount: 10, releaseQueryCount: 10, assetQueryCount: 10)
-//        let names = Set(catalog.apps.map({ $0.name })) // + " " + ($0.version ?? "") }))
-//        let ids = Set(catalog.apps.map({ $0.bundleIdentifier }))
-//        dbg("catalog", names.sorted())
-//
-//        XCTAssertEqual(ids.count, catalog.apps.count, "expected to have unique identifiers")
-//
-//        if let maxApps = maxApps {
-//            XCTAssertEqual(ids.count, maxApps)
-//            XCTAssertEqual(catalog.apps.count, maxApps)
-//        }
-//
-////        XCTAssertTrue(names.contains("CotEditor"))
-////        XCTAssertTrue(ids.contains("coteditor"))
-//
-//        XCTAssertGreaterThanOrEqual(names.count, 1)
-//
-//        //dbg(catalog.prettyJSON)
-//        dbg("created app casks catalog count:", ids.count, "size:", try? catalog.prettyJSON.count.localizedByteCount())
-//    }
-//
-//    @discardableResult private func checkApp(_ id: String, catalog: AppCatalog, fundingPlatform: AppFundingPlatform? = nil) -> AltCatalogAppItem? {
-//        guard let app = catalog.apps.first(where: { $0.bundleIdentifier == id }) else {
-//            XCTFail("no app \(id) found in app list: \(catalog.apps.map(\.bundleIdentifier))")
-//            return nil
-//        }
-//
-//        XCTAssertNotNil(app.subtitle, "missing subtitle in app: \(app.bundleIdentifier ?? "")")
-//        XCTAssertNotNil(app.version, "missing version in app: \(app.bundleIdentifier ?? "")")
-//        XCTAssertNotNil(app.versionDate, "missing versionDate in app: \(app.bundleIdentifier ?? "")")
-//        XCTAssertNotNil(app.sha256, "missing sha256 in app: \(app.bundleIdentifier ?? "")")
-//        XCTAssertNotNil(app.stats?.downloadCount, "missing downloadCount in app: \(app.bundleIdentifier ?? "")")
-//
-//        if let fundingPlatform = fundingPlatform {
-//            if let link = app.fundingLinks?.first {
-//                XCTAssertEqual(fundingPlatform, link.platform, "unexpected funding platform")
-//            } else {
-//                //XCTAssertNotNil(app.fundingLinks)
-//                //XCTFail("no funding links")
-//            }
-//        }
-//
-//        return app
-//    }
-//
-//    func testBuildMacOSCatalog() async throws {
-//        if runningFromCI {
-//            throw XCTSkip("disabled to reduce API load")
-//        }
-//
-//        let target = ArtifactTarget(artifactType: "macOS.zip", devices: ["mac"])
-//        let configuration = try FairHub.ProjectConfiguration()
-//        let catalog = try await Self.hub(skipNoAuth: true).buildAppCatalog(title: "The App Fair macOS Catalog", identifier: "net.appfair.catalog", owner: appfairName, baseRepository: baseFairgroundRepoName, fairsealCheck: true, artifactTarget: target, configuration: configuration, requestLimit: nil)
-//        let names = Set(catalog.apps.map({ $0.name })) // + " " + ($0.version ?? "") }))
-//        dbg("catalog", names.sorted())
-//        //dbg("### catalog", wip(catalog.prettyJSON))
-//
-//        XCTAssertFalse(names.contains(baseFairgroundRepoName))
-//        XCTAssertEqual("net.appfair.catalog", catalog.identifier)
-//
-//        checkApp("app.App-Fair", catalog: catalog)
-//        checkApp("app.Cloud-Cuckoo", catalog: catalog, fundingPlatform: .GITHUB)
-//        checkApp("app.Tune-Out", catalog: catalog, fundingPlatform: .GITHUB)
-//
-//        dbg("created macOS catalog count:", names.count, "size:", try? catalog.prettyJSON.count.localizedByteCount())
-//    }
-//
-//    func testBuildIOSAppSourceCatalog() async throws {
-//        if runningFromCI {
-//            throw XCTSkip("disabled to reduce API load")
-//        }
-//
-//        let target = ArtifactTarget(artifactType: "iOS.ipa", devices: ["iphone", "ipad"])
-//        let configuration = try FairHub.ProjectConfiguration()
-//        let catalog = try await Self.hub(skipNoAuth: true).buildAppCatalog(title: "The App Fair iOS Catalog", identifier: "net.appfair.catalog", owner: appfairName, baseRepository: baseFairgroundRepoName, fairsealCheck: true, artifactTarget: target, configuration: configuration, requestLimit: nil)
-//        let names = Set(catalog.apps.map({ $0.name })) // + " " + ($0.version ?? "") }))
-//        dbg("catalog", names.sorted())
-//
-//        XCTAssertFalse(names.contains(baseFairgroundRepoName))
-//        XCTAssertEqual("net.appfair.catalog", catalog.identifier)
-//
-//        checkApp("app.Cloud-Cuckoo", catalog: catalog, fundingPlatform: .GITHUB)
-//        checkApp("app.Tune-Out", catalog: catalog, fundingPlatform: .GITHUB)
-//
-//        dbg("created iOS catalog count:", names.count, "size:", try? catalog.prettyJSON.count.localizedByteCount())
-//        try print(catalog.prettyJSON)
-//    }
-//
     func testParseDroidCatalog() async throws {
         // let catalogData = try Data(contentsOf: URL(fileURLWithPath: "f-droid-index-v2.json", relativeTo: baseDir))
         let catalogData = try await URLSession.shared.fetch(request: URLRequest(url: FDroidEndpoint.defaultEndpoint)).data
         let catalog = try FDroidIndex(fromJSON: catalogData)
-        XCTAssertLessThan(3_900, catalog.packages.count, "F-Droid catalog should have contained packages")
+        XCTAssertLessThan(3_900, catalog.packages?.count ?? -1, "F-Droid catalog should have contained packages")
 
         let complete = try FDroidIndex.codableComplete(data: catalogData)
         //XCTAssertTrue(complete.difference == nil, "catalog serialized differently")
         let _ = complete // FIXME: catalog fidelity
     }
 
-//    func testFetchCatalog() async throws {
-//        let url = appfairCatalogURLMacOS
-//
-//        let (data, response) = try await URLSession.shared.fetch(request: URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 10.0))
-//        XCTAssertEqual(200, (response as? HTTPURLResponse)?.statusCode)
-//
-//        let catalog = try AppCatalog.parse(jsonData: data)
-//        XCTAssertEqual("Fair Apps", catalog.name)
-//        dbg("loaded catalog apps:", catalog.apps.count)
-//    }
+    func testParseDroidCatalogs() async throws {
+        /// Parses the FDroidIndex at the given test resource path, ensuring that it is codable complete
+        func parseResource(_ name: String, roundtrip: Bool) throws -> FDroidIndex {
+            let data = try Data(contentsOf: XCTUnwrap(Bundle.module.url(forResource: name, withExtension: nil)))
+            let decoder = JSONDecoder()
 
-//    func testFairHubAllowDenyPatterns() throws {
-//        func check(success successEmail: String? = nil, failure failureEmail: String? = nil, verification reason: String = "valid", allow: [String] = [], deny: [String] = []) throws {
-//            var hub = try Self.hub()
-//            hub.allowFrom = allow
-//            hub.denyFrom = deny
-//
-//            let mkcommit = { (email: String) in
-//                FairHub.CommitInfo(sha: "", node_id: "", url: nil, html_url: nil, comments_url: nil, commit: FairHub.CommitInfo.Commit(author: FairHub.User(name: "Some Name", email: email, date: nil), committer: FairHub.User(name: "Some Name", email: email, date: nil), message: "message", url: .tmpdir, comment_count: nil, verification: FairHub.CommitInfo.Verification(verified: true, reason: reason, signature: "", payload: "")))
-//            }
-//
-//            if let successEmail = successEmail {
-//                XCTAssertNoThrow(try hub.authorize(commit: mkcommit(successEmail)))
-//            }
-//
-//            if let failureEmail = failureEmail {
-//                XCTAssertThrowsError(try hub.authorize(commit: mkcommit(failureEmail)))
-//            }
-//        }
-//
-//        try check(success: "abc@QiZ.edu", allow: [".*@QIZ.EDU"])
-//        try check(failure: "abc@AQiZ.edu", allow: [".*@QIZ.EDU"])
-//
-//        try check(success: "abc@qiz.edu", allow: [".*@QIZ.EDU", ".*@ZIQ.EDU"])
-//        try check(success: "abc@ziq.edu", allow: [".*@QIZ.EDU", ".*@ZIQ.EDU"])
-//        try check(failure: "abc@ziz.edu", allow: [".*@QIZ.EDU", ".*@ZIQ.EDU"])
-//        try check(failure: "abc@qiq.edu", allow: [".*@QIZ.EDU", ".*@ZIQ.EDU"])
-//
-//        try check(failure: "abc@badbadbad.edu", deny: [".*@badbadbad.edu"])
-//        try check(failure: "abc@badbadbad.edu", allow: ["abc@badbadbad.edu"], deny: [".*@badbadbad.edu"]) // deny trumps allow
-//        try check(success: "abc@badbad.edu", deny: [".*@badbadbad.edu"])
-//
-//    }
+            // bug in round-trip codableComplete checking where large numbers are serialized differently depending whether they are an Int or Double
+            // "size":9223372036854775807
+            // "size":9.223372036854776e+18
+            /*
+            let (index, diff) = try FDroidIndex.codableComplete(data: data)
+            if roundtrip {
+                //let json = decoder.decode(JSON.self, from: data)
+                //print("raw JSON: \(try json.prettyJSON)")
+                //print("cat JSON: \(try index.prettyJSON)")
+                XCTAssertNil(diff, "index at \(name) has serialization differences")
+            }
+             */
 
+            let index = try decoder.decode(FDroidIndex.self, from: data)
+            if roundtrip {
+                var rawJSON = try decoder.decode(JSON.self, from: data)
+                rawJSON["unknownKey"] = nil // trick with fdroid-index-max-v2.json ("should get ignored")
+                let rawPretty = try rawJSON.prettyJSON
+
+                let rtJSON = try decoder.decode(JSON.self, from: try JSONEncoder().encode(index))
+                let rtPretty = try rtJSON.prettyJSON
+                XCTAssertTrue(rawJSON == rtJSON, "mismatch between raw parse: \(rawPretty) and round-tripped: \(rtPretty)")
+            }
+
+            return index
+        }
+
+        let empty = try parseResource("fdroid-index-empty-v2.json", roundtrip: true)
+        XCTAssertEqual(nil, empty.packages?.count)
+
+        let min = try parseResource("fdroid-index-min-v2.json", roundtrip: true)
+        XCTAssertEqual(1, min.packages?.count)
+
+        let mid = try parseResource("fdroid-index-mid-v2.json", roundtrip: true)
+        XCTAssertEqual(2, mid.packages?.count)
+
+        let max = try parseResource("fdroid-index-max-v2.json", roundtrip: true)
+        XCTAssertEqual(3, max.packages?.count)
+    }
 
     /// Verifies the default name validation strategy
     func testNameValidation() throws {

@@ -187,38 +187,6 @@ final class FairCommandTests: XCTestCase {
         XCTAssertGreaterThan(count, 0, "expected at least one result")
     }
 
-//    func checkSource(catalogURL: URL, count: Int) async throws {
-//        let cat = try await AltCatalog.parse(jsonData: URLSession.shared.fetch(request: URLRequest(url: catalogURL)).data)
-//
-//        // check the smallest apps
-//        // let apps = cat.apps.sorting(by: \.versionDate, ascending: false)
-//        let apps = cat.apps.sorting(by: \.size, ascending: true)
-//
-//        for app in apps.prefix(count) {
-//            dbg("verifying app \(app.bundleIdentifier ?? "noid") in \(catalogURL.absoluteString)")
-//
-//            guard let id = app.bundleIdentifier else {
-//                XCTFail("missing id for \(app)")
-//                continue
-//            }
-//            let (results, _) = try await runToolOutput(SourceCommand.self, cmd: SourceCommand.VerifyCommand.self, ["--verbose", "--bundle-id", id, catalogURL.absoluteString])
-//
-//            let result = try XCTUnwrap(results.first)
-//
-//            dbg("catalog:", try? result.prettyJSON)
-//            XCTAssertEqual(app.name, result.app.name, "failed to verify app \(app.bundleIdentifier ?? "noid") in \(catalogURL.absoluteString)")
-//        }
-//    }
-
-//    /// Runs "fairtool app info <url>" on a remote .app .zip file, which it will download and analyze.
-//    func testSourceVerifyCommandMacOS() async throws {
-//        try await checkSource(catalogURL: appfairCatalogURLMacOS, count: 3)
-//    }
-//
-//    func testSourceVerifyCommandSources() async throws {
-//        try await checkSource(catalogURL: appfairCatalogURLIOS, count: 3)
-//    }
-
     func testSourceCreateCommand() async throws {
         //let args = ["--token", "Tune-Out", "--version", "1.0.2", "--no-upload", "--no-overwrite"]
         let args = ["--token", "Tune-Out", "--no-upload", "--no-overwrite"] // test without version so we fetch it from the atom feed
