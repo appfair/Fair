@@ -114,6 +114,13 @@ final class CryptoTests: XCTestCase {
         XCTAssertEqual("3nybhbi3iqa8ino29wqQcBydtNk=", sha1.base64EncodedString())
     }
 
+    func testHMACSSHA256() throws {
+        let msg = "Hello, World!"
+        let key = "This is my secret"
+        let sha256 = msg.utf8Data.hmacSHA(key: key.utf8Data, hash: .sha256)
+        XCTAssertEqual("7f062172b01cb00b53ca068614674a3d982a34062a0f5d37687d5e3377e54657", sha256.hex())
+    }
+
     func testHMACCompat() throws {
         // echo -n "value-to-digest" | openssl dgst -sha256 -hmac "secret-key-here" -binary | openssl enc -base64 -A
         // G73zFnFYggHRpmwuRFPgch6ctqEfyhZu33j5PQWYm+4=

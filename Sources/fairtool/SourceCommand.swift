@@ -175,7 +175,10 @@ public struct SourceCommand : AsyncParsableCommand {
                 }
 
                 msg(.info, "downloading ADP for id \(adpid)")
-                let downloadFile = try await AltStoreService().download(adpid: adpid, logger: { msg(.info, $0) })
+                guard let marketplaceEndpoint = URL(string: sourceOptions.marketplaceService) else {
+                    throw AppError("AltStoreEndpoing was invalid: \(sourceOptions.marketplaceService)")
+                }
+                let downloadFile = try await MarketplaceEndpoint(endpointBase: marketplaceEndpoint).download(adpid: adpid, logger: { msg(.info, $0) })
                 defer { try? FileManager.default.removeItem(at: downloadFile) }
 
                 let tmpFolder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

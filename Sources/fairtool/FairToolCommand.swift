@@ -353,6 +353,9 @@ public struct SourceOptions: ParsableArguments {
     @Option(help: ArgumentHelp("The web site of the catalog", valueName: "url"))
     public var catalogWebsite: String = "https://appfair.org"
 
+    @Option(help: ArgumentHelp("The marketplace ADP processing endpoint", valueName: "url"))
+    public var marketplaceService: String = "https://api.altstore.io"
+
     @Option(help: ArgumentHelp("The tint color for this catalog", valueName: "rgbhex"))
     public var catalogTintColor: String?
 

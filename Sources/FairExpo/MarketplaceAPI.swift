@@ -5,10 +5,11 @@ import Foundation
 import FoundationNetworking
 #endif
 
-/// An interface for the AltStore web services.
+/// An interface for Alternative App Distribution marketplace web services, which provide web APIs for
+/// processing and downloading ADP binaries.
 ///
-/// https://faq.altstore.io/developers/rest-api
-public struct AltStoreService : EndpointService {
+/// e.g., https://faq.altstore.io/developers/rest-api
+public struct MarketplaceEndpoint : EndpointService {
     public var endpointBase: URL
 
     public static var backoffCodes: IndexSet = []
@@ -37,7 +38,7 @@ public struct AltStoreService : EndpointService {
             self.adpID = adpID
         }
 
-        public func queryURL(for service: AltStoreService) -> URL {
+        public func queryURL(for service: MarketplaceEndpoint) -> URL {
             service.endpointBase.appending(components: "adps", adpID) // GET
         }
         
@@ -56,7 +57,7 @@ public struct AltStoreService : EndpointService {
             self.adpID = adpID
         }
 
-        public func queryURL(for service: AltStoreService) -> URL {
+        public func queryURL(for service: MarketplaceEndpoint) -> URL {
             service.endpointBase.appending(components: "adps") // POST
         }
 
@@ -76,7 +77,7 @@ public struct AltStoreService : EndpointService {
         while dateNow <= expiration {
             defer { dateNow = Date.now }
             do {
-                let downloadResponse = try await request(AltStoreService.ADPDownloadRequest(adpID: adpid))
+                let downloadResponse = try await request(MarketplaceEndpoint.ADPDownloadRequest(adpID: adpid))
 
                 // 404 will be raised if it has never seen an ADP ID
 
@@ -87,7 +88,7 @@ public struct AltStoreService : EndpointService {
                 } else if downloadResponse.downloadExpired == true {
                     // request processing, then continue to wait…
                     logger("download expired for adpid=\(adpid), requesting re-download…")
-                    let processing = try await request(AltStoreService.ADPProcessRequest(adpID: adpid))
+                    let processing = try await request(MarketplaceEndpoint.ADPProcessRequest(adpID: adpid))
                     logger("request processing for adpid=\(adpid) with status \(processing.status ?? "unknown")")
                     try await Task.sleep(interval: 10)
                     continue
@@ -108,7 +109,7 @@ public struct AltStoreService : EndpointService {
                     // try requesting the download
                     logger("download unknown for adpid=\(adpid), requesting processing…")
                     // TODO: these seem to trigger a 202 with no data when processing is initiated
-                    _ = try await requestOptional(AltStoreService.ADPProcessRequest(adpID: adpid))
+                    _ = try await requestOptional(MarketplaceEndpoint.ADPProcessRequest(adpID: adpid))
                     try await Task.sleep(interval: 10)
                     continue
                 } else {
