@@ -19,7 +19,7 @@ extension SemVer : ExpressibleByArgument {
 
 
 public struct AppCommand : AsyncParsableCommand {
-    public static let experimental = false
+    public static let experimental = true
     public static var configuration = CommandConfiguration(commandName: "app",
                                                            abstract: "Commands for creating and validating an App Fair app.",
                                                            shouldDisplay: !experimental, subcommands: Self.subcommands)

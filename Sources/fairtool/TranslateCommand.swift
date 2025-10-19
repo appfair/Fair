@@ -4,7 +4,7 @@ import FairExpo
 import ArgumentParser
 
 public struct TranslateCommand : AsyncParsableCommand {
-    public static let experimental = false
+    public static let experimental = true
     public static var configuration = CommandConfiguration(commandName: "translate",
                                                            abstract: "Commands for handling localizations",
                                                            shouldDisplay: !experimental, subcommands: Self.subcommands)

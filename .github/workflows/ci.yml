@@ -96,4 +96,3 @@ jobs:
         run: |
           VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
           gh release create "${VERSION}" -t "${VERSION}" --generate-notes fairtool-bin.zip
-

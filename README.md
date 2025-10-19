@@ -12,6 +12,25 @@ The functionality of the `Fair` module can best be illustrated by the
 capabilities of the `fairtool`, which is a command-line utility for
 macOS (15+) and Linux.
 
+### Installation
+
+You can install Fairtool locally by running:
+
+```shell
+curl -fsSL https://appfair.net/install-fairtool.sh | sh
+```
+
+### Running from Source
+
+The run the fairtool from a local build
+on a machine with Swift 5.10 or higher:
+
+```shell
+git clone https://github.com/appfair/Fair
+cd Fair
+swift run fairtool --help
+```
+
 ### fairtool artifact info _file_.app
 
 The "app info" command will examine a macOS `.app` folder 
@@ -228,231 +247,6 @@ This can be especially important when checking potentially slow
 access to online resources, or when processing may archives at once.
 
 
-### fairtool source create
-
-The `fairtool source create` command will analyze the information
-from `fairtool artifact info` and generate an App Source Catalog JSON blob. 
-This catalog format is supported by app installation tools like
-[The App Fair](https://appfair.app) on macOS and
-[AltStore](https://altstore.io) on iOS.
-
-The tool has the following options:
-
-```
-% fairtool source create --help 
-
-OVERVIEW: Create a source from the specified .ipa or .zip.
-
-USAGE: fairtool source create [--verbose] [--quiet] [--promote-json] [--catalog-name <name>] [--catalog-identifier <id>] [--catalog-source-url <url>] [--app-localized-description <desc> ...] [--app-version-description <desc> ...] [--app-subtitle <title> ...] [--app-developer-name <email> ...] [--app-download-url <URL> ...] [<apps> ...]
-
-ARGUMENTS:
-  <apps>                  path(s) or url(s) for app folders or ipa archives
-
-OPTIONS:
-  -v, --verbose           whether to display verbose messages.
-  -q, --quiet             whether to be suppress output.
-  -J, --promote-json      exclude root JSON array from output.
-  --catalog-name <name>   the name of the catalog.
-  --catalog-identifier <id>
-                          the identifier of the catalog.
-  --catalog-source-url <url>
-                          the source URL of the catalog.
-  --app-localized-description <desc>
-                          the default description(s) for the app(s).
-  --app-version-description <desc>
-                          the default versionDescription for the app(s).
-  --app-subtitle <title>  the default subtitle(s) for the app(s).
-  --app-developer-name <email>
-                          the default developer name(s) for the app(s).
-  --app-download-url <URL>
-                          the download URLfor the app(s).
-  -h, --help              Show help information.
-```
-
-An example of the catalog output is as follows:
-
-```json5
-// % fairtool source create https://github.com/Cloud-Cuckoo/App/releases/download/0.9.91/Cloud-Cuckoo-iOS.ipa
-
-{
-  "identifier": "CATALOG_IDENTIFIER",
-  "name": "CATALOG_NAME",
-  "apps": [
-    {
-      "bundleIdentifier": "app.Cloud-Cuckoo",
-      "developerName": "DEVELOPER_NAME",
-      "downloadURL": "https://github.com/Cloud-Cuckoo/App/releases/download/0.9.91/Cloud-Cuckoo-iOS.ipa",
-      "localizedDescription": "LOCALIZED_DESCRIPTION",
-      "name": "Cloud Cuckoo",
-      "permissions": [
-        {
-          "type": "usage",
-          "usage": "NSAppleEventsUsageDescription",
-          "usageDescription": "AppleScript can be used by this app."
-        }
-      ],
-      "screenshotURLs": [],
-      "sha256": "01398e19555b65b7c457d02e68d0e0ca34cf078867a674aee019a7f28da70d64",
-      "size": 5118243,
-      "subtitle": "SUBTITLE",
-      "version": "0.9.91",
-      "versionDate": "2022-06-30T20:23:12Z",
-      "versionDescription": "VERSION_DESCRIPTION"
-    }
-  ]
-}
-```
-
-#### Default properties for source create
-
-Properties such as `subtitle` and `developerName` will be derived from the
-app's Info.plist's property named `AppSource`, which is expected to be a dictionary
-keyed by the corresponding property names.
-
-An abridged example of an `Info.plist` with the `AppSource` property:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>AppSource</key>
-    <dict>
-        <key>subtitle</key>
-        <string>A whimsical game of excitement and delight</string>
-        <key>localizedDescription</key>
-        <string>Chase on the Cuckoo around the screen! This is a silly little game for the App Fair.</string>
-        <key>developerName</key>
-        <string>Fair Apps &lt;fairapps@appfair.net&gt;</string>
-        <key>versionDescription</key>
-        <string>Bug fixes and performance improvements.</string>
-        <key>fundingLinks</key>
-        <array>
-            <dict>
-                <key>platform</key>
-                <string>GITHUB</string>
-                <key>url</key>
-                <string>https://github.com/Cloud-Cuckoo</string>
-                <key>localizedTitle</key>
-                <string>Support the development of “Cloud Cuckoo”</string>
-                <key>localizedDescription</key>
-                <string>Help fund upcoming challenges and new additions to the whimsical and award-winning “Cloud Cuckoo” game. Fun for all ages!</string>
-            </dict>
-        </array>
-    </dict>
-    <key>CFBundleExecutable</key>
-    <string>$(EXECUTABLE_NAME)</string>
-    <key>CFBundleIdentifier</key>
-    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-    <key>CFBundleName</key>
-    <string>$(PRODUCT_NAME)</string>
-    <key>CFBundlePackageType</key>
-    <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
-    <key>CFBundleShortVersionString</key>
-    <string>$(MARKETING_VERSION)</string>
-    <key>CFBundleVersion</key>
-    <string>$(CURRENT_PROJECT_VERSION)</string>
-</dict>
-</plist>
-```
-
-With that metadata embedded in the .ipa, the `fairtool source create` command
-will have enough information to generate a more complete catalog entry.
-
-The benefit of this method is that the app artifact alone is sufficient
-for the creation of a catalog without requiring any additional
-sources of metadata.
-
-```json5
-// fairtool source create https://github.com/Cloud-Cuckoo/App/releases/download/0.9.99/Cloud-Cuckoo-iOS.ipa
-
-{
-  "identifier": "CATALOG_IDENTIFIER",
-  "name": "CATALOG_NAME",
-  "apps": [
-    {
-      "bundleIdentifier": "app.Cloud-Cuckoo",
-      "developerName": "Fair Apps <fairapps@appfair.net>",
-      "downloadURL": "https://github.com/Cloud-Cuckoo/App/releases/download/0.9.99/Cloud-Cuckoo-iOS.ipa",
-      "fundingLinks": [
-        {
-          "localizedDescription": "Help fund upcoming challenges and new additions to the whimsical and award-winning “Cloud Cuckoo” game. Fun for all ages!",
-          "localizedTitle": "Support the development of “Cloud Cuckoo”",
-          "platform": "GITHUB",
-          "url": "https://github.com/Cloud-Cuckoo"
-        }
-      ],
-      "localizedDescription": "Chase on the Cuckoo around the screen! This is a silly little game for the App Fair.",
-      "name": "Cloud Cuckoo",
-      "permissions": [
-        {
-          "type": "usage",
-          "usage": "NSAppleEventsUsageDescription",
-          "usageDescription": "AppleScript can be used by this app."
-        }
-      ],
-      "screenshotURLs": [],
-      "sha256": "8a3903588bece74c00bef1329f9dd6cc9684e78be049b1b4e2325ce07d78e085",
-      "size": 5162625,
-      "subtitle": "A whimsical game of excitement and delight",
-      "version": "0.9.99",
-      "versionDate": "2022-07-03T04:51:21Z",
-      "versionDescription": "Bug fixes and performance improvements."
-    }
-  ]
-}
-```
-
-
-### fairtool source verify
-
-The `fairtool source verify` can be used to check the validity of the
-apps in a JSON catalog.
-
-For example:
-
-```shell
-% fairtool source create https://github.com/Cloud-Cuckoo/App/releases/latest/download/Cloud-Cuckoo-iOS.ipa > catalog.json
-
-% fairtool source verify catalog.json
-
-[
-  {
-    "app": {
-      "bundleIdentifier": "app.Cloud-Cuckoo"
-      "sha256": "56e748bf053aff8612702ba9f1aa13031ef0c29313cc4047e3176b9ba8526686",
-      "size": 5136274
-    }
-  }
-]
-```
-
-If, for example, the resource at the `downloadURL` no longer matches the
-SHA256 checksum or file size, the catalog's validation errors 
-would look like:
-
-```json
-[
-  {
-    "app": {
-      "bundleIdentifier": "app.Cloud-Cuckoo"
-      "size": 5136274,
-      "sha256": "56e748bf053aff8612702ba9f1aa13031ef0c29313cc4047e3176b9ba8526686"
-    },
-    "failures": [
-      {
-        "type": "size_mismatch",
-        "message": "Download size mismatch (5136274 vs. 5052688) from: https://github.com/Cloud-Cuckoo/App/releases/latest/download/Cloud-Cuckoo-iOS.ipa"
-      },
-      {
-        "type": "checksum_failed",
-        "message": "Checksum mismatch (56e748bf053aff8612702ba9f1aa13031ef0c29313cc4047e3176b9ba8526686 vs. 07e74b8db6eed309a6cdc92e40d5f7b7fd00922126f8ff49085516dd052ffa3a) from: https://github.com/Cloud-Cuckoo/App/releases/latest/download/Cloud-Cuckoo-iOS.ipa"
-      }
-    ]
-  }
-]
-```
-
 ## Fair Swift Modules
 
 The `fairtool` is powered by the `Fair` package, which is a
@@ -466,22 +260,13 @@ algorithms shared throughout the package.
 It supports macOS 12+, iOS 15+, and Linux (Windows is close,
 but needs a fix for missing zlib; Android is TBD).
 
-FairCore also contains utilities for 
-[zip file handling](https://fair-ground.github.io/Fair/documentation/faircore/ziparchive)
-and 
-[XML parsing](https://fair-ground.github.io/Fair/documentation/faircore/xmlnode).
-
 ### FairExpo
 
 The `FairExpo` module provides a cross-platform set of networking
 protocols, such as utilities for interacting with a
-[GraphQLEndpointService](https://fair-ground.github.io/Fair/documentation/fairexpo/graphqlendpointservice),
-getting metadata from the
-[HomebrewAPI](https://fair-ground.github.io/Fair/documentation/fairexpo/homebrewapi/),
-and creating and verifying App Source catalogs with the
-[https://fair-ground.github.io/Fair/documentation/fairexpo/appcatalogapi](AppCatalogAPI).
+`GraphQLEndpointService`
 
- `FairExpo` depends on `FairCore`.
+`FairExpo` depends on `FairCore`.
  
 ## Swift Package Manager
 
