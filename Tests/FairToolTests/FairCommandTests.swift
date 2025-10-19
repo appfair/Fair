@@ -209,33 +209,33 @@ final class FairCommandTests: XCTestCase {
 
         XCTAssertEqual(3, output.apps.count)
 
-        let firstApp = try XCTUnwrap(output.apps.dropFirst(0).first, "catalog should have contained at least one app")
-        XCTAssertEqual("TuneOut", firstApp.name)
-        XCTAssertEqual("org.appfair.app.Tune-Out", firstApp.bundleIdentifier)
-        XCTAssertEqual("other", firstApp.category) // FIXME
-        XCTAssertEqual("1639901758", firstApp.marketplaceID)
-        XCTAssertEqual("Stream internet radio", firstApp.subtitle)
-        XCTAssertEqual(1, firstApp.versions?.count)
+        let tuneOut = try XCTUnwrap(output.apps.dropFirst(0).first, "catalog should have contained at least one app")
+        XCTAssertEqual("TuneOut", tuneOut.name)
+        XCTAssertEqual("org.appfair.app.Tune-Out", tuneOut.bundleIdentifier)
+        XCTAssertEqual("other", tuneOut.category) // FIXME
+        XCTAssertEqual("1639901758", tuneOut.marketplaceID)
+        XCTAssertEqual("Stream internet radio", tuneOut.subtitle)
+        XCTAssertEqual(1, tuneOut.versions?.count)
 
-        let secondApp = try XCTUnwrap(output.apps.dropFirst(1).first, "catalog should have contained a second app")
-        XCTAssertEqual("NetSkip", secondApp.name)
-        XCTAssertEqual("org.appfair.app.Net-Skip", secondApp.bundleIdentifier)
-        XCTAssertEqual("other", secondApp.category) // FIXME
-        XCTAssertEqual("1640618584", secondApp.marketplaceID)
-        XCTAssertEqual("A humane web browser", secondApp.subtitle)
-        XCTAssertEqual(1, secondApp.versions?.count)
-        XCTAssertEqual(netSkipVersion, secondApp.versions?.first?.version)
+        let netSkip = try XCTUnwrap(output.apps.dropFirst(1).first, "catalog should have contained a second app")
+        XCTAssertEqual("NetSkip", netSkip.name)
+        XCTAssertEqual("org.appfair.app.Net-Skip", netSkip.bundleIdentifier)
+        XCTAssertEqual("other", netSkip.category) // FIXME
+        XCTAssertEqual("1640618584", netSkip.marketplaceID)
+        XCTAssertEqual("A humane web browser", netSkip.subtitle)
+        XCTAssertEqual(1, netSkip.versions?.count)
+        XCTAssertEqual(netSkipVersion, netSkip.versions?.first?.version)
 
-        let thirdApp = try XCTUnwrap(output.apps.dropFirst(2).first, "catalog should have contained a third app")
-        XCTAssertEqual("SkipNotes", thirdApp.name)
-        XCTAssertEqual("org.appfair.app.SkipNotes", thirdApp.bundleIdentifier)
-        XCTAssertEqual("other", thirdApp.category) // FIXME
-        XCTAssertEqual("6740916318", thirdApp.marketplaceID)
-        XCTAssertEqual("Simple and secure notes", thirdApp.subtitle)
-        XCTAssertEqual(1, thirdApp.versions?.count)
+        let skipNotes = try XCTUnwrap(output.apps.dropFirst(2).first, "catalog should have contained a third app")
+        XCTAssertEqual("SkipNotes", skipNotes.name)
+        XCTAssertEqual("org.appfair.app.SkipNotes", skipNotes.bundleIdentifier)
+        XCTAssertEqual("other", skipNotes.category) // FIXME
+        XCTAssertEqual("6740916318", skipNotes.marketplaceID)
+        XCTAssertEqual("Simple and secure notes", skipNotes.subtitle)
+        XCTAssertEqual(1, skipNotes.versions?.count)
     }
 
-    func testSourceCreateFDrdoidCommand() async throws {
+    func testSourceCreateFDroidCommand() async throws {
         let netSkipVersion = "1.4.5"
         let args = ["Tune-Out", "Net-Skip/\(netSkipVersion)", "Skip-Notes"]
 
@@ -243,13 +243,122 @@ final class FairCommandTests: XCTestCase {
 
         _ = messages
 
-        //let output = result.output.joined()
-        dbg("output:", output)
-
         XCTAssertEqual(3, output.packages?.count)
+
+        let tuneOut = try XCTUnwrap(output.packages?["org.appfair.app.Tune_Out"], "missing app")
+        XCTAssertEqual("TuneOut", tuneOut.metadata.name?["en-US"])
+
+        let netSkip = try XCTUnwrap(output.packages?["org.appfair.app.Net_Skip"], "missing app")
+        let _ = netSkip
+        //XCTAssertEqual("Skip Showcase", netSkip.metadata.name?["en-US"]) // oops
+
+        let skipNotes = try XCTUnwrap(output.packages?["org.appfair.app.SkipNotes"], "missing app")
+        XCTAssertEqual("Skip Notes", skipNotes.metadata.name?["en-US"])
 
         //let catalog: AltCatalog = try SourceCommand.CreateCommand.Output(fromJSON: output.utf8Data, dateDecodingStrategy: .iso8601)
         //dbg("catalog:", try? catalog.toJSON(outputFormatting: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes], dateEncodingStrategy: .iso8601).utf8String)
+
+        // TODO: validate against fdroidserver's `fdroid update` output for the app:
+        let expected = try JSONDecoder().decode(FDroidIndex.self, from: """
+        {
+          "repo": {
+            "name": {
+              "en-US": "The App Fair Project"
+            },
+            "description": {
+              "en-US": "This is a repository of apps to be used with F-Droid. Applications in this repository are either official binaries built by the original application developers, or are binaries built from source by the admin of f-droid.org using the tools on https://gitlab.com/fdroid."
+            },
+            "icon": {
+              "en-US": {
+                "name": "/icons/icon.png",
+                "sha256": "7b42abdb1ec052f24f6957b73789355bdf5d1ba9d9c432d636a515838aa16989",
+                "size": 681
+              }
+            },
+            "address": "https://api.appfair.net/fdroid/repo",
+            "timestamp": 1760571293000,
+            "categories": {
+              "server": {
+                "name": {
+                  "en-US": "server"
+                }
+              }
+            }
+          },
+          "packages": {
+            "org.appfair.app.Tune_Out": {
+              "metadata": {
+                "added": 1760571293000,
+                "categories": [
+                  "server"
+                ],
+                "lastUpdated": 1760571293000,
+                "name": {
+                  "en-US": "TuneOut"
+                },
+                "preferredSigner": "082e7b25ea1120bfb1b5e72a15dd359a5300b7b7d44297271ee0c870285bff38"
+              },
+              "versions": {
+                "dcf83b18561745baecb8013f542d883dab7d1d1b3cf391173603add9c78df809": {
+                  "added": 1760571293000,
+                  "file": {
+                    "name": "https://github.com/appfair/Tune-Out/releases/download/1.0.5/TuneOut-release.apk",
+                    "sha256": "dcf83b18561745baecb8013f542d883dab7d1d1b3cf391173603add9c78df809",
+                    "size": 22206307
+                  },
+                  "manifest": {
+                    "nativecode": [
+                      "arm64-v8a",
+                      "armeabi",
+                      "armeabi-v7a",
+                      "mips",
+                      "mips64",
+                      "x86",
+                      "x86_64"
+                    ],
+                    "versionName": "1.0.5",
+                    "versionCode": 17,
+                    "usesSdk": {
+                      "minSdkVersion": 28,
+                      "targetSdkVersion": 36
+                    },
+                    "signer": {
+                      "sha256": [
+                        "082e7b25ea1120bfb1b5e72a15dd359a5300b7b7d44297271ee0c870285bff38"
+                      ]
+                    },
+                    "usesPermission": [
+                      {
+                        "name": "android.permission.INTERNET"
+                      },
+                      {
+                        "name": "android.permission.FOREGROUND_SERVICE"
+                      },
+                      {
+                        "name": "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+                      },
+                      {
+                        "name": "android.permission.POST_NOTIFICATIONS"
+                      },
+                      {
+                        "name": "android.permission.WAKE_LOCK"
+                      },
+                      {
+                        "name": "android.permission.ACCESS_NETWORK_STATE"
+                      },
+                      {
+                        "name": "org.appfair.app.Tune_Out.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+        """.data(using: .utf8)!)
+
+        XCTAssertEqual(1, expected.packages?.count)
     }
 
     func testValidateCommand() async throws {

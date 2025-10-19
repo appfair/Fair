@@ -15,6 +15,7 @@ public struct FairToolCommand : AsyncParsableCommand {
     public static var configuration = CommandConfiguration(
         commandName: "fairtool",
         abstract: "Manage an ecosystem of apps",
+        version: Bundle.fairCoreVersion?.versionString ?? "unknown",
         shouldDisplay: !experimental,
         subcommands: [
             AppCommand.self,

@@ -33,8 +33,9 @@ cat > ${TOOLNAME}-bin/${TOOLNAME} << "EOF"
 # This scipt invokes the tool named after the script
 # in the appropriate OS and architecture sub-folder
 set -e
-TOOLNAME="$(basename "${BASH_SOURCE[0]}")"
-TOOLPATH="$(dirname "${BASH_SOURCE[0]}")"
+SCRIPTPATH="$(realpath "${BASH_SOURCE[0]}")"
+TOOLNAME="$(basename "${SCRIPTPATH}")"
+TOOLPATH="$(dirname "${SCRIPTPATH}")"
 OS="$(uname -s)"
 ARCH="$(uname -m)"
 PROGRAM="${TOOLPATH}"/"${OS}"/"${ARCH}"/"${TOOLNAME}"

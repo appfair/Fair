@@ -68,7 +68,7 @@ public struct SourceCommand : AsyncParsableCommand {
                 let appVersion = tokenParts.count > 1 ? tokenParts.dropFirst().first?.description : nil
 
                 msg(.info, "creating app item for: \(appName) version=\(appVersion ?? "")")
-                let item = try await createAppItem(token: appName, version: appVersion)
+                let item = try await createFDroidPackage(token: appName, version: appVersion)
                 packageList.append(item)
             }
 
@@ -85,13 +85,41 @@ public struct SourceCommand : AsyncParsableCommand {
             return catalog
         }
 
-        public func createAppItem(token: String, version latestVersion: String?) async throws -> (String, FDroidIndex.Package) {
+        public func createFDroidPackage(token: String, version latestVersion: String?) async throws -> (String, FDroidIndex.Package) {
             msg(.info, "creating f-droid catalog for token: \(token)")
 
             let version = try await fetchLatestVersion(token: token, unless: latestVersion)
             let dataSource = try await fetchSourceZip(token: token, version: version)
             let pathPrefix = (dataSource.paths.first?.pathName ?? "") + "/" // e.g.: "Tune-Out-1.0.2/"
-            //let relativePaths = dataSource.paths.map(\.pathName).map({ $0.dropFirst(pathPrefix.count).description })
+            let relativePaths = dataSource.paths.map(\.pathName).map({ $0.dropFirst(pathPrefix.count).description })
+
+            let fastlaneMetadataPrefix = "Android/fastlane/metadata/android"
+            func loadAndroidFastlaneMetadata(_ path: String, locale: String) throws -> String? {
+                String(data: try dataSource.data(atPath: pathPrefix + "\(fastlaneMetadataPrefix)/\(locale)/\(path)"), encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+
+            // build the list of locales from everything under the Android/fastlane/metadata/android/ path
+            let locales = relativePaths
+                .filter({ $0.hasPrefix(fastlaneMetadataPrefix + "/") })
+                .map({ $0.split(separator: "/") })
+                .filter({ $0.count == 5 })
+                .compactMap({ $0.last?.description })
+
+            func loadFastlaneMetadata(_ key: String) -> FDroidIndex.LocalizedText? {
+                var dict = FDroidIndex.LocalizedText()
+
+                for locale in locales {
+                    if let value = try? loadAndroidFastlaneMetadata(key, locale: locale) {
+                        dict[locale] = value
+                    }
+                }
+
+                if !dict.isEmpty {
+                    return dict
+                } else {
+                    return nil
+                }
+            }
 
             let envFileData = try dataSource.data(atPath: pathPrefix + "Skip.env")
             let envFile = try EnvFile(data: envFileData)
@@ -115,7 +143,10 @@ public struct SourceCommand : AsyncParsableCommand {
             let manifest = FDroidIndex.Package.Manifest(versionName: "", versionCode: 0)
             let packageVersion = FDroidIndex.Package.PackageVersion(added: 0, file: file, manifest: manifest)
 
-            let metadata = FDroidIndex.Package.Metadata(added: 0, lastUpdated: 0)
+            var metadata = FDroidIndex.Package.Metadata(added: 0, lastUpdated: 0)
+            metadata.name = loadFastlaneMetadata("title.txt")
+            metadata.summary = loadFastlaneMetadata("short_description.txt")
+            metadata.description = loadFastlaneMetadata("full_description.txt")
             let package = FDroidIndex.Package(metadata: metadata, versions: [version: packageVersion])
 
             return (appIdentifier, package)
@@ -175,7 +206,7 @@ public struct SourceCommand : AsyncParsableCommand {
                 let appVersion = tokenParts.count > 1 ? tokenParts.dropFirst().first?.description : nil
 
                 msg(.info, "creating app item for: \(appName) version=\(appVersion ?? "")")
-                let item = try await createAppItem(token: appName, version: appVersion)
+                let item = try await createAltCatalogAppItem(token: appName, version: appVersion)
                 apps.append(item)
             }
 
@@ -200,7 +231,7 @@ public struct SourceCommand : AsyncParsableCommand {
                 let json = try catalog.toJSON(outputFormatting: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes], dateEncodingStrategy: .iso8601, dataEncodingStrategy: .base64)
 
                 // upload the generated catalog to the GitHub releases
-                _ = try await FileManager.default.withTemporaryFile(named: "altstore.json", contents: json) { path in
+                _ = try await fm.withTemporaryFile(named: "altstore.json", contents: json) { path in
                     try await githubReleaseUpload(appToken: sourceItem.appToken, version: appVersion, paths: [path])
                 }
             }
@@ -208,7 +239,7 @@ public struct SourceCommand : AsyncParsableCommand {
             return catalog
         }
 
-        func createAppItem(token appToken: String, version releaseVersion: String?) async throws -> (appToken: String, appItem: AltCatalogAppItem) {
+        func createAltCatalogAppItem(token appToken: String, version releaseVersion: String?) async throws -> (appToken: String, appItem: AltCatalogAppItem) {
             let version = try await fetchLatestVersion(token: appToken, unless: releaseVersion)
             let dataSource = try await fetchSourceZip(token: appToken, version: version)
             let pathPrefix = (dataSource.paths.first?.pathName ?? "") + "/" // e.g.: "Tune-Out-1.0.2/"
@@ -266,18 +297,18 @@ public struct SourceCommand : AsyncParsableCommand {
                     throw AppError("AltStoreEndpoint was invalid: \(sourceOptions.marketplaceService)")
                 }
                 let downloadFile = try await MarketplaceEndpoint(endpointBase: marketplaceEndpoint).download(adpid: adpid, logger: { msg(.info, $0) })
-                defer { try? FileManager.default.removeItem(at: downloadFile) }
+                defer { try? fm.removeItem(at: downloadFile) }
 
-                let tmpFolder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+                let tmpFolder = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
 
-                try FileManager.default.unzipItem(at: downloadFile, to: tmpFolder)
-                defer { try? FileManager.default.removeItem(at: tmpFolder) }
+                try fm.unzipItem(at: downloadFile, to: tmpFolder)
+                defer { try? fm.removeItem(at: tmpFolder) }
 
                 // ensure that the manifest data exists in the folder
                 let manifestData = try Data(contentsOf: tmpFolder.appendingPathComponent("manifest.json"))
                 manifest = try JSONDecoder().decode(ADPManifest.self, from: manifestData)
 
-                let adpExtractedPaths = try FileManager.default.enumeratedURLs(of: tmpFolder)
+                let adpExtractedPaths = try fm.enumeratedURLs(of: tmpFolder)
 
                 // now upload the contents of the zip to the GitHub repository
                 let ghOut = try await githubReleaseUpload(appToken: appToken, version: marketingVersion, paths: adpExtractedPaths.filter(\.pathIsRegularFile))
