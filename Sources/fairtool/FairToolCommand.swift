@@ -26,6 +26,7 @@ public struct FairToolCommand : AsyncParsableCommand {
             JSONCommand.self,
             SourceCommand.self,
             VersionCommand.self, // `fairtool version` shows the current version
+            WelcomeCommand.self,
         ]
     )
 
@@ -54,7 +55,6 @@ public struct FairToolCommand : AsyncParsableCommand {
         }
     }
 }
-
 
 /// A command that contains options for how messages will be conveyed to the user
 public protocol FairMsgCommand : AsyncParsableCommand {
@@ -122,6 +122,7 @@ extension MessageBuffer : Decodable {
     }
 }
 
+
 /// A command that requires the presence of a project
 protocol FairProjectCommand : FairMsgCommand {
     var projectOptions: ProjectOptions { get }
@@ -130,105 +131,6 @@ protocol FairProjectCommand : FairMsgCommand {
 public struct FairProjectInfo : FairCommandOutput, Decodable {
     public var name: String
     public var url: URL
-}
-
-protocol FairAppCommand : FairProjectCommand {
-    var targets: [String] { get }
-    var language: [String] { get }
-}
-
-extension FairAppCommand {
-
-#if os(macOS)
-    /// Run `genstrings` on the source files in the project.
-    func generateLocalizedStrings(locstr: String = "Localizable.strings") async throws {
-        //msg(.info, "Scanning strings for localization")
-
-        for target in targets {
-            let resourcesFolder = projectOptions.projectPathURL(path: "Sources")
-                .appendingPathComponent(target)
-                .appendingPathComponent("Resources")
-
-            let tmp = projectOptions.projectPathURL(path: ".fairtool").appendingPathComponent(UUID().uuidString)
-            try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
-            defer {
-                // clean up temporary localization file
-                try? FileManager.default.removeItem(at: tmp)
-            }
-
-            let sourceFiles = try projectOptions.projectPathURL(path: "Sources").fileChildren(deep: true).filter { url in
-                url.pathExtension == "swift"
-            }
-
-            // rather than forking genstrings, some simple regular expressions for
-            // NSLocalizedString(…) might suffice.
-            // SwiftUI.Text(…) interpolation might make it a bit tricker, since inline
-            // parameter values would need to be handled (which would involve parsing a subset
-            // of the Swift language).
-            let args = ["genstrings", "-SwiftUI", "-o", tmp.path] + sourceFiles.map(\.path)
-            msg(.debug, "running command:", args)
-            let cmd = try await Process.exec(cmd: "/usr/bin/xcrun", args: args)
-            msg(.debug, "process exited with:", cmd.terminationStatus)
-
-            let outputFile = tmp.appendingPathComponent(locstr)
-
-            var generatedEncoding: String.Encoding = .utf16 // genstrings outputs UTF-16
-            let generatedStrings = try String(contentsOf: outputFile, usedEncoding: &generatedEncoding)
-            // the generated locale file
-            let generatedLocaleFile = try LocalizedStringsFile(fileContents: generatedStrings)
-
-            msg(.debug, "created strings file", outputFile.path, "encoding:", generatedEncoding)
-
-            for (lang, matches) in try loadLocalizations(resourcesFolder: resourcesFolder) {
-                for (url, plist) in matches {
-                    _ = plist
-                    if !language.isEmpty && !language.contains(lang) {
-                        msg(.info, "skipping excluded language code:", lang, url.absoluteString)
-                        continue
-                    }
-
-                    let localizedStringsPath = resourcesFolder
-                        .appendingPathComponent(lang)
-                        .appendingPathExtension("lproj")
-                        .appendingPathComponent(locstr)
-
-                    msg(.info, "Scanning strings in \(target) for localization to:", localizedStringsPath.path)
-
-                    var existingEncoding: String.Encoding = .utf8
-
-                    // load the initial strings to check for changes
-                    let existingStrings = try String(contentsOf: localizedStringsPath, usedEncoding: &existingEncoding)
-                    let existingLocaleFile = try LocalizedStringsFile(fileContents: existingStrings)
-
-                    var updatedLocale = generatedLocaleFile
-                    try updatedLocale.update(strings: existingLocaleFile.plist)
-                    var localizedStrings = updatedLocale.fileContents
-                    //generatedLocaleFile
-
-                    let locale = Locale(identifier: lang)
-                    let languageNameCurrent = Locale.current.localizedString(forLanguageCode: lang) ?? ""
-                    let languageName = locale.localizedString(forLanguageCode: lang) ?? ""
-
-                    let comments = [
-                        "Localized \(languageNameCurrent) (\(languageName)) strings for this App Fair App.",
-                        "Translators: edit this file to fork the repository and contribute your translated strings.",
-                        "Visit https://appfair.net/#translation for more details.",
-                    ]
-
-                    // create a comment header for the file
-                    localizedStrings = comments.map({ "// " + $0 }).joined(separator: "\n") + "\n\n" + localizedStrings
-
-                    if localizedStrings == existingStrings {
-                        msg(.info, "Localizations unchanged:", localizedStringsPath.path)
-                    } else {
-                        try localizedStrings.write(to: localizedStringsPath, atomically: true, encoding: .utf8)
-                        msg(.info, "wrote updated strings file to:", localizedStringsPath.path)
-                    }
-                }
-            }
-        }
-    }
-#endif
 }
 
 extension FairMsgCommand {
@@ -303,6 +205,13 @@ public struct OutputOptions: ParsableArguments {
     @Option(name: [.long, .customShort("o")], help: ArgumentHelp("The output path"))
     public var output: String = "-"
 
+    @Flag(name: [.long], inversion: .prefixedNo, help: ArgumentHelp("Show no colors or progress animations"))
+    var plain: Bool = ProcessInfo.processInfo.environment["TERM"] == "dumb" || ProcessInfo.processInfo.environment["TERM"] == nil || (ProcessInfo.processInfo.environment["NO_COLOR"] ?? "").isEmpty == false // try to auto-detect when we shouldn't be using ANSI colors
+
+    public var term: Term {
+        plain || output != "-" ? .plain : .ansi
+    }
+
     public init() { }
 
     /// The flag for the output folder or the current director
@@ -318,6 +227,73 @@ public struct OutputOptions: ParsableArguments {
         }
     }
 }
+
+/// Terminal output information, such as how to output messages in various ANSI colors.
+public struct Term {
+    public static let plain = Term(colors: false)
+    public static let ansi = Term(colors: true)
+
+    /// Whether to use color or plain output
+    public let colors: Bool
+
+    fileprivate func color(_ string: any StringProtocol, code: Color) -> String {
+        if colors == false {
+            return string.description // return the plain string
+        } else {
+            return code.rawValue + string + Color.reset.rawValue
+        }
+    }
+
+    /// Returns the string with and ANSI `black` code when colors are enabled, or the raw string when they are disabled
+    public func black(_ string: any StringProtocol) -> String { color(string, code: .black) }
+    /// Returns the string with and ANSI `red` code when colors are enabled, or the raw string when they are disabled
+    public func red(_ string: any StringProtocol) -> String { color(string, code: .red) }
+    /// Returns the string with and ANSI `green` code when colors are enabled, or the raw string when they are disabled
+    public func green(_ string: any StringProtocol) -> String { color(string, code: .green) }
+    /// Returns the string with and ANSI `yellow` code when colors are enabled, or the raw string when they are disabled
+    public func yellow(_ string: any StringProtocol) -> String { color(string, code: .yellow) }
+    /// Returns the string with and ANSI `blue` code when colors are enabled, or the raw string when they are disabled
+    public func blue(_ string: any StringProtocol) -> String { color(string, code: .blue) }
+    /// Returns the string with and ANSI `magenta` code when colors are enabled, or the raw string when they are disabled
+    public func magenta(_ string: any StringProtocol) -> String { color(string, code: .magenta) }
+    /// Returns the string with and ANSI `cyan` code when colors are enabled, or the raw string when they are disabled
+    public func cyan(_ string: any StringProtocol) -> String { color(string, code: .cyan) }
+    /// Returns the string with and ANSI `gray` code when colors are enabled, or the raw string when they are disabled
+    public func gray(_ string: any StringProtocol) -> String { color(string, code: .gray) }
+    /// Returns the string with and ANSI `white` code when colors are enabled, or the raw string when they are disabled
+    public func white(_ string: any StringProtocol) -> String { color(string, code: .white) }
+
+    // ANSI escape sequences for text colors
+    fileprivate enum Color : String, CaseIterable {
+        static let esc = "\u{001B}"
+
+        case reset = "\u{001B}[0m"
+        case black = "\u{001B}[30m"
+        case red = "\u{001B}[31m"
+        case green = "\u{001B}[32m"
+        case yellow = "\u{001B}[33m"
+        case blue = "\u{001B}[34m"
+        case magenta = "\u{001B}[35m"
+        case cyan = "\u{001B}[36m"
+        case white = "\u{001B}[37m"
+        case gray = "\u{001B}[30;1m"
+    }
+
+    public static func stripANSIAttributes(from text: String) -> String {
+        guard !text.isEmpty else { return text }
+
+        // ANSI attribute is always started with ESC and ended by `m`
+        var txt = text.split(separator: Term.Color.esc)
+        for (i, sub) in txt.enumerated() {
+            if let end = sub.firstIndex(of: "m") {
+                txt[i] = sub[sub.index(after: end)...]
+            }
+        }
+        return txt.joined()
+    }
+}
+
+
 
 extension OutputOptions {
     func writeCatalog<T: Encodable>(_ catalog: T) throws -> Data {

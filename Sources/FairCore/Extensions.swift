@@ -51,6 +51,19 @@ extension Sequence {
     }
 }
 
+extension Collection {
+    /// Returns the substring of the given string, safely handling index bounds
+    public func slice(_ i1: Int, _ i2: Int? = nil) -> SubSequence {
+        guard let start = index(startIndex, offsetBy: i1, limitedBy: endIndex) else {
+            return self[startIndex..<startIndex]
+        }
+
+        let end = i2.flatMap { index(startIndex, offsetBy: $0, limitedBy: endIndex) } ?? endIndex
+
+        return self[start..<end]
+    }
+}
+
 extension Sequence where Element : Hashable {
     /// Returns a dictionary with the counts of each of the elements.
     /// - Returns: a dictionary with keys for each of the unique elements in the set, along with counts

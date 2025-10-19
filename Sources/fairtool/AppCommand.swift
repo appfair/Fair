@@ -238,3 +238,102 @@ fileprivate extension FairProjectCommand {
     }
 }
 
+protocol FairAppCommand : FairProjectCommand {
+    var targets: [String] { get }
+    var language: [String] { get }
+}
+
+extension FairAppCommand {
+
+#if os(macOS)
+    /// Run `genstrings` on the source files in the project.
+    func generateLocalizedStrings(locstr: String = "Localizable.strings") async throws {
+        //msg(.info, "Scanning strings for localization")
+
+        for target in targets {
+            let resourcesFolder = projectOptions.projectPathURL(path: "Sources")
+                .appendingPathComponent(target)
+                .appendingPathComponent("Resources")
+
+            let tmp = projectOptions.projectPathURL(path: ".fairtool").appendingPathComponent(UUID().uuidString)
+            try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+            defer {
+                // clean up temporary localization file
+                try? FileManager.default.removeItem(at: tmp)
+            }
+
+            let sourceFiles = try projectOptions.projectPathURL(path: "Sources").fileChildren(deep: true).filter { url in
+                url.pathExtension == "swift"
+            }
+
+            // rather than forking genstrings, some simple regular expressions for
+            // NSLocalizedString(…) might suffice.
+            // SwiftUI.Text(…) interpolation might make it a bit tricker, since inline
+            // parameter values would need to be handled (which would involve parsing a subset
+            // of the Swift language).
+            let args = ["genstrings", "-SwiftUI", "-o", tmp.path] + sourceFiles.map(\.path)
+            msg(.debug, "running command:", args)
+            let cmd = try await Process.exec(cmd: "/usr/bin/xcrun", args: args)
+            msg(.debug, "process exited with:", cmd.terminationStatus)
+
+            let outputFile = tmp.appendingPathComponent(locstr)
+
+            var generatedEncoding: String.Encoding = .utf16 // genstrings outputs UTF-16
+            let generatedStrings = try String(contentsOf: outputFile, usedEncoding: &generatedEncoding)
+            // the generated locale file
+            let generatedLocaleFile = try LocalizedStringsFile(fileContents: generatedStrings)
+
+            msg(.debug, "created strings file", outputFile.path, "encoding:", generatedEncoding)
+
+            for (lang, matches) in try loadLocalizations(resourcesFolder: resourcesFolder) {
+                for (url, plist) in matches {
+                    _ = plist
+                    if !language.isEmpty && !language.contains(lang) {
+                        msg(.info, "skipping excluded language code:", lang, url.absoluteString)
+                        continue
+                    }
+
+                    let localizedStringsPath = resourcesFolder
+                        .appendingPathComponent(lang)
+                        .appendingPathExtension("lproj")
+                        .appendingPathComponent(locstr)
+
+                    msg(.info, "Scanning strings in \(target) for localization to:", localizedStringsPath.path)
+
+                    var existingEncoding: String.Encoding = .utf8
+
+                    // load the initial strings to check for changes
+                    let existingStrings = try String(contentsOf: localizedStringsPath, usedEncoding: &existingEncoding)
+                    let existingLocaleFile = try LocalizedStringsFile(fileContents: existingStrings)
+
+                    var updatedLocale = generatedLocaleFile
+                    try updatedLocale.update(strings: existingLocaleFile.plist)
+                    var localizedStrings = updatedLocale.fileContents
+                    //generatedLocaleFile
+
+                    let locale = Locale(identifier: lang)
+                    let languageNameCurrent = Locale.current.localizedString(forLanguageCode: lang) ?? ""
+                    let languageName = locale.localizedString(forLanguageCode: lang) ?? ""
+
+                    let comments = [
+                        "Localized \(languageNameCurrent) (\(languageName)) strings for this App Fair App.",
+                        "Translators: edit this file to fork the repository and contribute your translated strings.",
+                        "Visit https://appfair.net/#translation for more details.",
+                    ]
+
+                    // create a comment header for the file
+                    localizedStrings = comments.map({ "// " + $0 }).joined(separator: "\n") + "\n\n" + localizedStrings
+
+                    if localizedStrings == existingStrings {
+                        msg(.info, "Localizations unchanged:", localizedStringsPath.path)
+                    } else {
+                        try localizedStrings.write(to: localizedStringsPath, atomically: true, encoding: .utf8)
+                        msg(.info, "wrote updated strings file to:", localizedStringsPath.path)
+                    }
+                }
+            }
+        }
+    }
+#endif
+}
+
