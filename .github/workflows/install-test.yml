@@ -19,6 +19,8 @@ jobs:
           - 'macos-26'
     runs-on: ${{ matrix.os }}
     steps:
+      - run: echo $PATH
       - run: curl -fsSL https://appfair.net/install-fairtool.sh | sh
+      - run: echo $PATH
       - run: fairtool --version
 
