@@ -213,8 +213,11 @@ final class FairCommandTests: XCTestCase {
     }
 
     func testSourceCreateAltStoreCommand() async throws {
+        let tuneOutVersion = "1.0.7"
         let netSkipVersion = "1.4.5"
-        let args = ["Tune-Out", "Net-Skip/\(netSkipVersion)", "Skip-Notes"]
+        let skipNotesVersion = "0.8.7"
+
+        let args = ["Tune-Out/\(tuneOutVersion)", "Net-Skip/\(netSkipVersion)", "Skip-Notes/\(skipNotesVersion)"]
 
         let (output, messages) = try await runToolOutputSingle(SourceCommand.configuration, SourceCommand.CreateCommand.configuration, cmd: SourceCommand.CreateAltStoreCatalogCommand.self, args: Array(args))
 
@@ -230,6 +233,7 @@ final class FairCommandTests: XCTestCase {
         XCTAssertEqual("1639901758", tuneOut.marketplaceID)
         XCTAssertEqual("Stream internet radio", tuneOut.subtitle)
         XCTAssertEqual(1, tuneOut.versions?.count)
+        XCTAssertEqual(tuneOutVersion, tuneOut.versions?.first?.version)
 
         let netSkip = try XCTUnwrap(output.apps.dropFirst(1).first, "catalog should have contained a second app")
         XCTAssertEqual("NetSkip", netSkip.name)
@@ -247,6 +251,7 @@ final class FairCommandTests: XCTestCase {
         XCTAssertEqual("6740916318", skipNotes.marketplaceID)
         XCTAssertEqual("Simple and secure notes", skipNotes.subtitle)
         XCTAssertEqual(1, skipNotes.versions?.count)
+        XCTAssertEqual(skipNotesVersion, skipNotes.versions?.first?.version)
     }
 
     func testSourceCreateFDroidCommand() async throws {
