@@ -10,6 +10,10 @@ import CoreFoundation
 import SwiftUI
 #endif
 
+/// The root folder where fairtool configu files will go
+let fairtoolConfigHome = URL(fileURLWithPath: (ProcessInfo.processInfo.environment["XDG_CONFIG_HOME"] ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config", isDirectory: true).path) + "/fairtool", isDirectory: true)
+let fairtoolDefaultKeystorePath = ProcessInfo.processInfo.environment["FAIRTOOL_ASC_API_KEY_FILE"] ?? fairtoolConfigHome.appending(path: "apple-appstore-apikey.json").path
+
 public struct FairToolCommand : AsyncParsableCommand {
     public static let experimental = false
     public static var configuration = CommandConfiguration(
@@ -25,6 +29,7 @@ public struct FairToolCommand : AsyncParsableCommand {
             BrewCommand.self,
             JSONCommand.self,
             SourceCommand.self,
+            AppStoreConnectCommand.self,
             VersionCommand.self, // `fairtool version` shows the current version
             WelcomeCommand.self,
         ]
@@ -214,7 +219,7 @@ public struct OutputOptions: ParsableArguments {
 
     public init() { }
 
-    /// The flag for the output folder or the current director
+    /// The flag for the output folder or the current directory
     var outputDirectoryFlag: String {
         self.output
     }

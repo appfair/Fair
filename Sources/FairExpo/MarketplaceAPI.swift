@@ -1,4 +1,3 @@
-import Swift
 import FairCore
 import Foundation
 #if canImport(FoundationNetworking)
@@ -41,10 +40,6 @@ public struct MarketplaceEndpoint : EndpointService {
 
         public func queryURL(for service: MarketplaceEndpoint) -> URL {
             service.endpointBase.appending(components: "adps", adpID) // GET
-        }
-        
-        public func postData() throws -> Data? {
-            nil
         }
     }
 
@@ -130,6 +125,7 @@ public struct MarketplaceEndpoint : EndpointService {
     public struct ADPProcessResponse : Codable {
         public let id: String
         public let status: String? // e.g., "inProgress" or "success"
+        public let note: String? // e.g., "Please make sure you have signed the latest Paid Apps Agreement on App Store Connect."
         public let downloadExpiration: Date?
         public let downloadExpired: Bool?
         public let operationID: String?

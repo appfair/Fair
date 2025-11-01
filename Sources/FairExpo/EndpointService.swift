@@ -15,7 +15,7 @@ public protocol EndpointService {
     /// The codes that returns an HTTP error but contains information about backing off and re-trying an operation
     static var backoffCodes: IndexSet { get }
 
-    var requestHeaders: [String: String] { get }
+    var requestHeaders: [String: String] { get throws }
 }
 
 public extension EndpointService {
@@ -23,7 +23,7 @@ public extension EndpointService {
         let url = request.queryURL(for: self)
         var req = URLRequest(url: url)
 
-        req.allHTTPHeaderFields = requestHeaders
+        req.allHTTPHeaderFields = try requestHeaders
 
         let postData = try request.postData()
         if let postData = postData {
@@ -60,6 +60,12 @@ public protocol APIRequest {
 
     /// Post data if this is a `POST` request, `nil` if it is a `GET`
     func postData() throws -> Data?
+}
+
+public extension APIRequest {
+    func postData() throws -> Data? {
+        nil // by default we make GET requests
+    }
 }
 
 public extension EndpointService {

@@ -2,7 +2,7 @@ import XCTest
 import FairCore
 import FairExpo
 import ArgumentParser
-import fairtool
+@testable import fairtool
 
 /// Tests different command options for the FairToolCommand.
 ///
@@ -196,6 +196,20 @@ final class FairCommandTests: XCTestCase {
         }
 
         XCTAssertGreaterThan(count, 0, "expected at least one result")
+    }
+
+    func testAppStoreConnectListAppsCommand() async throws {
+        if !FileManager.default.isReadableFile(atPath: fairtoolDefaultKeystorePath) {
+            throw XCTSkip("Skipping test due to missing keystore")
+        }
+        let args: [String] = [] // ["--keystore", keystore]
+        let (output, messages) = try await runToolOutputSingle(AppStoreConnectCommand.configuration, AppStoreConnectCommand.AppCommand.configuration, cmd: AppStoreConnectCommand.ListAppsCommand.self, args: Array(args))
+        _ = messages
+
+        let tuneOut = try XCTUnwrap(output.data?.first(where: { $0.attributes.name == "Tune-Out" }))
+        XCTAssertEqual("Tune-Out", tuneOut.attributes.name)
+        XCTAssertEqual("org.appfair.app.Tune-Out", tuneOut.attributes.bundleId)
+        XCTAssertEqual("3432232323", tuneOut.attributes.sku)
     }
 
     func testSourceCreateAltStoreCommand() async throws {

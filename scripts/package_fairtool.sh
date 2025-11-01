@@ -11,14 +11,14 @@ rm -rf ${TOOLNAME}-bin
 
 # Static Linux build
 for ARCH in "x86_64" "aarch64"; do
-    swiftly run swift build --swift-sdk "${ARCH}-swift-linux-musl" --configuration "${CONFIGURATION}" --product ${TOOLNAME}
+    swiftly run swift build --swift-sdk "${ARCH}-swift-linux-musl" --configuration "${CONFIGURATION}" --product ${TOOLNAME} +6.2
     mkdir -p ${TOOLNAME}-bin/Linux/${ARCH}
     cp -a .build/${ARCH}-swift-linux-musl/${CONFIGURATION}/${TOOLNAME} ${TOOLNAME}-bin/Linux/${ARCH}/
 done
 
 # macOS build
 for ARCH in "x86_64" "arm64"; do
-    swiftly run swift build --arch "${ARCH}" --configuration "${CONFIGURATION}" --product ${TOOLNAME}
+    swiftly run swift build --arch "${ARCH}" --configuration "${CONFIGURATION}" --product ${TOOLNAME} +6.2
     mkdir -p ${TOOLNAME}-bin/Darwin/${ARCH}
     cp -a .build/${ARCH}-apple-macosx/${CONFIGURATION}/${TOOLNAME} ${TOOLNAME}-bin/Darwin/${ARCH}/
 done

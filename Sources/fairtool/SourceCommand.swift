@@ -155,7 +155,7 @@ public struct SourceCommand : AsyncParsableCommand {
 
     /// Creates an AltStore source from one or more source folders or zip URLs.
     ///
-    /// Example use: `fairtool source create altstore --token Skip-Notes --version 0.8.6 --adpid 412cd63d-180f-4ee0-a06a-accca8fe349e
+    /// Example use: `fairtool source create altstore --adpid 412cd63d-180f-4ee0-a06a-accca8fe349e Skip-Notes/0.8.6`
     public struct CreateAltStoreCatalogCommand: CatalogCommand {
         @OptionGroup public var msgOptions: MsgOptions
         @OptionGroup public var outputOptions: OutputOptions

@@ -1,10 +1,11 @@
-The `fairtool` is a cross-platform (Linux & macOS) command-line utility for 
-managing an ecosystem of apps.
-It is powered by the Fair package, which is a zero-dependency 
-cross-platform (Linux, macOS, & iOS) set of Swift 5 modules.
+The `fairtool` is a cross-platform (Linux & macOS)
+command-line utility and set of Swift modules
+for managing an ecosystem of apps.
+It is powered by the Fair package, which is a
+cross-platform (Linux, macOS) executable and set of Swift modules.
 
-The Fair package is used to create and maintain app distribution networks such as 
-[appfair.org](https://appfair.org).
+The Fair package is used to create and maintain app distribution networks
+such as [The App Fair](https://appfair.org).
 
 ## fairtool
 
@@ -12,7 +13,7 @@ The functionality of the `Fair` module can best be illustrated by the
 capabilities of the `fairtool`, which is a command-line utility for
 macOS (15+) and Linux.
 
-### Installation
+## Installation
 
 You can install Fairtool locally by running:
 
@@ -31,7 +32,117 @@ cd Fair
 swift run fairtool --help
 ```
 
-### fairtool artifact info _file_.app
+## Usage
+
+### Interfacing with App Store Connect
+
+https://developer.apple.com/documentation/appstoreconnectapi
+
+#### Setup
+
+In order to be able to connect to the App Store Connect API, follow the instructions at 
+[Creating API Keys for App Store Connect API](https://developer.apple.com/documentation/appstoreconnectapi/creating-api-keys-for-app-store-connect-api).
+
+Once you have the key information and the `.p8` file downloaded, put all the information
+into a single configuration JSON file, which follows the format used by the
+[Fastlane API Key JSON file](https://docs.fastlane.tools/app-store-connect-api/#using-fastlane-api-key-json-file).
+
+Your `apple-appstore-apikey.json` file will look something like this:
+
+```json
+{
+  "key_id": "D383SF239",
+  "issuer_id": "6053b7fe-68a8-1acb-89be-165aa6465141",
+  "key": "-----BEGIN PRIVATE KEY-----\nMIGTAgEAMBMGByqGSM19AgEGCCqGSM49AwEABHknlhdlYdLu\n-----END PRIVATE KEY-----"
+}
+```
+
+> [!WARNING]
+> Keep this API key secure! It contains all the credentials that
+> anyone would need to manage your apps and other sensitive account information
+> through App Store Connect. Do not leave the key in a publicly accessible location,
+> and do not check it into source control!
+
+The path to the key will be searched for in one of the following places:
+
+- The path specified by the `--keystore` argument
+- The path specified in the `FAIRTOOL_ASC_API_KEY_FILE` environment variable
+- The default location at `$HOME/.config/fairtool/apple-appstore-apikey.json`
+
+#### Issuing commands
+
+A freeform request to any documented endpoint can be made with the
+`fairtool asc request` command. This can be useful for testing whether
+the API key works, and for exploring the API directly.
+
+For example, to list all your organization's apps in JSON format, you might call
+the [List Apps](https://developer.apple.com/documentation/appstoreconnectapi/get-v1-apps)
+endpoint:
+
+```
+fairtool asc request https://api.appstoreconnect.apple.com/v1/apps
+```
+
+which would result in something like:
+
+```json
+{
+  "data" : [
+    {
+      "attributes" : {
+        "accessibilityUrl" : null,
+        "bundleId" : "org.appfair.app.Tune-Out",
+        "contentRightsDeclaration" : "USES_THIRD_PARTY_CONTENT",
+        "isOrEverWasMadeForKids" : false,
+        "name" : "Tune-Out",
+        "primaryLocale" : "en-US",
+        "sku" : "3432232323"
+      },
+      "id" : "1639901758",
+      "links" : {
+        "self" : "https://api.appstoreconnect.apple.com/v1/apps/1639901758"
+      },
+      "relationships" : {
+        "accessibilityDeclarations" : {
+          "links" : {
+            "related" : "https://api.appstoreconnect.apple.com/v1/apps/1639901758/accessibilityDeclarations",
+            "self" : "https://api.appstoreconnect.apple.com/v1/apps/1639901758/relationships/accessibilityDeclarations"
+          }
+        },
+        "alternativeDistributionKey" : {
+          "links" : {
+            "related" : "https://api.appstoreconnect.apple.com/v1/apps/1639901758/alternativeDistributionKey",
+            "self" : "https://api.appstoreconnect.apple.com/v1/apps/1639901758/relationships/alternativeDistributionKey"
+          }
+        }
+      },
+      "type" : "apps"
+    }
+  ],
+  "links" : {
+    "self" : "https://api.appstoreconnect.apple.com/v1/apps"
+  },
+  "meta" : {
+    "paging" : {
+      "limit" : 50,
+      "total" : 16
+    }
+  }
+}
+```
+
+#### Assembling Alternative Distribution Packages (ADP)
+
+https://developer.apple.com/documentation/marketplacekit/ingesting-an-alternative-distribution-package
+
+
+### Analying apps
+
+fairtool can analyze Mach-O app packages, both for macOS and iOS apps.
+This can be used to extract metadata examine entitlements,
+and perform security analysis on the app package.
+
+#### fairtool artifact info _file_.app
 
 The "app info" command will examine a macOS `.app` folder 
 or an unencrypted `.ipa` file or url
@@ -105,7 +216,7 @@ the binary. Note that in the case of multi-architecture binaries
 output for each processor architectures in the Mach-O binary.
 
 
-### fairtool artifact info _url_.ipa
+#### fairtool artifact info _url_.ipa
 
 The fairtool can also output the same information for an unencrypted
 iOS .ipa file, either a local file or a remote URL:
@@ -173,7 +284,9 @@ iOS .ipa file, either a local file or a remote URL:
 
 ```
 
-### fairtool JSON output
+### General fairtool Usage Info
+
+#### fairtool JSON output
 
 Most of the fairtool's informational operations will output
 well-formed JSON. This is so it can be used in conjunction with
@@ -225,7 +338,6 @@ For example, the following command may take some time to complete:
 "Time Machine"
 "VoiceMemos"
 ```
-
 
 The end result will not be printed until the command has completed,
 since `jq` is waiting for the entire array before it will process
@@ -315,5 +427,3 @@ such as a commercial App Store. For more details, see
 the [`LICENSE.AGPL`](LICENSE.AGPL)
 and [`LICENSE_EXCEPTION.FAIR`](LICENSE_EXCEPTION.FAIR)
 files.
-
-
