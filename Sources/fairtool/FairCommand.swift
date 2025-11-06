@@ -414,18 +414,7 @@ extension FairCommand {
                 }
             }
 
-            // also verify the hub if we have specified it in the arguments
-            if hubOptions.hub != "" {
-                try await verify(org: orgName, repo: appName, hub: hubOptions.fairHub())
-            }
-
             msg(.info, "Successfully validated project:", projectOptions.projectPathURL(path: "").path)
-
-
-            // validate the reference
-            if let refFlag = validateOptions.ref {
-                try await validateCommit(ref: refFlag, hub: hubOptions.fairHub())
-            }
         }
 
         func verify(org: String, repo repoName: String, hub: FairHub) async throws {

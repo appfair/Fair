@@ -309,9 +309,6 @@ extension OutputOptions {
 }
 
 public struct SourceOptions: ParsableArguments {
-    @Option(help: ArgumentHelp("The name of the fairground", valueName: "name"))
-    public var fairgroundName: String = "appfair"
-
     @Option(help: ArgumentHelp("The name of the developer of the catalog", valueName: "name"))
     public var developerName: String = "The App Fair Project"
 
@@ -403,7 +400,7 @@ public struct MsgOptions: ParsableArguments {
         if !promoteJSON { write(",") }
     }
 
-    func writeOutput<T: FairCommandOutput>(_ item: T) throws {
+    func writeOutput(_ item: FairCommandOutput) throws {
         try write(item.toJSON(outputFormatting: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes], dateEncodingStrategy: .iso8601).utf8String ?? "")
     }
 
@@ -454,12 +451,16 @@ public struct RegOptions: ParsableArguments {
     }
 }
 
+public protocol HubCommand : FairParsableCommand {
+    var hubOptions: HubOptions { get }
+}
+
 /// A Hub is represented by a string "`service.host`/`organization`".
 ///
 /// E.g., "github.com/appfair"
 public struct HubOptions: ParsableArguments {
     @Option(name: [.long, .customShort("h")], help: ArgumentHelp("The name of the hub to use (e.g., gitub.com/appfair)", valueName: "host/org"))
-    public var hub: String
+    public var hub: String = "gitub.com/appfair"
 
     @Option(name: [.long, .customShort("B")], help: ArgumentHelp("The name of the hub's base repository", valueName: "repo"))
     public var baseRepo: String = baseFairgroundRepoName
@@ -704,9 +705,6 @@ extension FairParsableCommand {
 
     static var appSuffix: String { ".app" }
 
-    /// The name of the App & the repository; defaults to "App"
-    var appName: String { baseFairgroundRepoName }
-
     var environment: [String: String] { ProcessInfo.processInfo.environment }
 
     /// Fail the command and exit the tool
@@ -716,14 +714,6 @@ extension FairParsableCommand {
 
     func load(url: URL) throws -> Data {
         try Data(contentsOf: url)
-    }
-
-    func validateCommit(ref: String, hub: FairHub) async throws {
-        msg(.info, "Validating commit ref:", ref)
-        let response = try await hub.request(FairHub.GetCommitQuery(owner: hub.org, name: appName, ref: ref)).get().data
-        let author: Void = try hub.authorize(commit: response)
-        let _ = author
-        //msg(.info, "Validated commit author:", author)
     }
 
     /// Perform update checks before copying the app into the destination

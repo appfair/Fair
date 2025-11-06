@@ -2,16 +2,19 @@ import Foundation
 
 /// https://developer.apple.com/documentation/marketplacekit/ingesting-an-alternative-distribution-package#Process-the-manifest-file
 public struct ADPManifest: Codable, Equatable {
-    public var distributionPackageRevision: Int // 1
-    public var appleItemId: String // "10738181399"
-    public var bundleId: String // "com.megabytemart.backyardbirds"
-    public var shortVersionString: String // "1.5"
-    public var bundleVersion: String // "1"
-    public var appleVersionId: String // "2000013060"
+    public var manifestSchemaVersion: String? // "1.0"
+    public var distributionPackageRevision: Int // 1, 2 for subsequent manifest delivery with deltas…
+    public var appleItemId: String // "6740916318"
+    public var bundleId: String // "org.appfair.app.SkipNotes"
+    public var shortVersionString: String // "0.8.7"
+    public var bundleVersion: String // "44"
+    public var appleVersionId: String // "879184094"
     public var platforms: [String] // [ "ios" ]
     public var minimumSystemVersions: [String: String] // { "ios": "17.2" }
     public var requiredDeviceCapabilities: [String] // ["arm64"]
     //public var appInstallDeterminants: [Any] // unsure what this data type should be
+    public var hasMessagesExtension: Bool?
+    public var isLaunchProhibited: Bool?
     public var variants: [Variant]
     public var deltas: [Delta]
 
@@ -31,8 +34,8 @@ public struct ADPManifest: Codable, Equatable {
 
         public struct SourceVariant: Codable, Equatable {
             public var installTargets: [[String: String]] // [ { "device": "iPhone14,5", "os": "17.4" }, … ]
-            public var appleVersionId: String // "2000011760"
-            public var version: String // "1.1"
+            public var appleVersionId: String // "878080263"
+            public var version: String // "0.8.5"
         }
     }
 

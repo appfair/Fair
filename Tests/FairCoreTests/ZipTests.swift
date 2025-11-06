@@ -18,7 +18,9 @@ final class ZipTests: XCTestCase {
 
         do {
             let pad = " xxx ".utf8Data
-            let data2 = data + pad + data + pad + pad + data + pad + pad + pad + data + data + data + data
+            var data2 = data + pad + data + pad + pad
+            data2 += data + pad + pad + pad
+            data2 += data + data + data + data
 
             let deflated = try data2.deflate(level: -1, checksum: false, wrap: false).data
             XCTAssertEqual("4bcac94f5230346328cf482c51c82c56282dd05148c94fb657a8a8a85048c22749a40abccaa8250e00", deflated.hex())

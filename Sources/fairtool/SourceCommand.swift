@@ -41,7 +41,7 @@ public struct SourceCommand : AsyncParsableCommand {
         @Flag(inversion: .prefixedNo, help: ArgumentHelp("Whether to overwrite existing catalog uploads"))
         public var overwrite: Bool = true
 
-        @Argument(help: ArgumentHelp("App token/versions to merge", valueName: "apps"))
+        @Argument(help: ArgumentHelp("App token/versions to create the catalog for", valueName: "apps"))
         public var appTokens: [String]
 
         public static var configuration = CommandConfiguration(
@@ -156,13 +156,18 @@ public struct SourceCommand : AsyncParsableCommand {
     /// Creates an AltStore source from one or more source folders or zip URLs.
     ///
     /// Example use: `fairtool source create altstore --adpid 412cd63d-180f-4ee0-a06a-accca8fe349e Skip-Notes/0.8.6`
-    public struct CreateAltStoreCatalogCommand: CatalogCommand {
+    public struct CreateAltStoreCatalogCommand: CatalogCommand, HubCommand, ASCCommand {
         @OptionGroup public var msgOptions: MsgOptions
         @OptionGroup public var outputOptions: OutputOptions
         @OptionGroup public var sourceOptions: SourceOptions
+        @OptionGroup public var hubOptions: HubOptions
+        @OptionGroup public var ascOptions: ASCOptions
 
         @Option(help: ArgumentHelp("The Alternative Distribution Package ID for the release", valueName: "id"))
         public var adpid: String?
+
+        @Option(help: ArgumentHelp("The App Store Connect version ID to use for building the package"))
+        public var versionid: String?
 
         @Flag(inversion: .prefixedNo, help: ArgumentHelp("Upload the app catalog for a single app GitHub release"))
         public var upload: Bool = false
@@ -170,12 +175,16 @@ public struct SourceCommand : AsyncParsableCommand {
         @Flag(inversion: .prefixedNo, help: ArgumentHelp("Whether to overwrite existing catalog uploads"))
         public var overwrite: Bool = true
 
-        @Argument(help: ArgumentHelp("App token/versions to merge", valueName: "apps"))
-        public var appTokens: [String]
+        @Argument(help: ArgumentHelp("App token/versions for the catalog", valueName: "apps"))
+        public var appTokens: [String] = []
 
         public static var configuration = CommandConfiguration(
             commandName: "altstore",
-            abstract: "Create an AltSouce catalog source")
+            abstract: "Create an AltSouce catalog source",
+            usage: """
+            # create a single entry by uploading an Alternative Distribution Package
+            fairtool source create altstore --versionid 211bf27b-ab9f-46eb-b11a-8f3d0adc8ebe
+            """)
 
         public typealias Output = AltCatalog
 
@@ -188,6 +197,30 @@ public struct SourceCommand : AsyncParsableCommand {
             try msgOptions.writeOutput(output)
         }
 
+        fileprivate func fetchADP(uploadToHub: Bool = true) async throws -> String {
+            // when we specified the versionid and no app tokens, then download the version info
+            let endpoint = try createASCEndpoint()
+            let adpid = try await endpoint.resolveADPID(from: self.adpid, versionID: self.versionid)
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).path
+            let (manifest, files) = try await endpoint.downloadADP(adpid: adpid, directory: directory, logger: { msg(.info, $0) })
+
+            let appBundle = manifest.bundleId
+            if !appBundle.hasPrefix("org.appfair.app.") {
+                throw AppError("Bundle for \(manifest.bundleId) is not in the expected format: org.appfair.app.<bundle-id>")
+            }
+            
+            let appName = appBundle.split(separator: ".").last?.description ?? appBundle
+            let appVersion = manifest.shortVersionString
+            
+            // now upload files to releases…
+            if uploadToHub {
+                try await githubReleaseUpload(appToken: appName, version: appVersion, overwrite: true, paths: Set(files.values))
+            }
+
+            // now populate the app name and version from the bundle
+            return appName + "/" + appVersion
+        }
+        
         public func createCatalog() async throws -> Output {
             msg(.info, "creating altstore catalog")
             var catalog = AltCatalog()
@@ -197,6 +230,12 @@ public struct SourceCommand : AsyncParsableCommand {
             catalog.website = sourceOptions.catalogWebsite
             catalog.iconURL = sourceOptions.catalogIconURL
             catalog.tintColor = sourceOptions.catalogTintColor
+
+            var appTokens = appTokens
+            if appTokens.isEmpty, (adpid != nil || versionid != nil) {
+                // no token specified; try to extract it from the adpid or versionid and transfer the ADP up to the githubReleases
+                appTokens = [try await fetchADP()]
+            }
 
             var apps: [(appToken: String, appItem: AltCatalogAppItem)] = []
             for appToken in appTokens {
@@ -231,8 +270,8 @@ public struct SourceCommand : AsyncParsableCommand {
                 let json = try catalog.toJSON(outputFormatting: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes], dateEncodingStrategy: .iso8601, dataEncodingStrategy: .base64)
 
                 // upload the generated catalog to the GitHub releases
-                _ = try await fm.withTemporaryFile(named: "altstore.json", contents: json) { path in
-                    try await githubReleaseUpload(appToken: sourceItem.appToken, version: appVersion, paths: [path])
+                try await fm.withTemporaryFile(named: "altstore.json", contents: json) { path in
+                    try await githubReleaseUpload(appToken: sourceItem.appToken, version: appVersion, overwrite: overwrite, paths: [path])
                 }
             }
 
@@ -284,40 +323,9 @@ public struct SourceCommand : AsyncParsableCommand {
             let rawContentURL = try self.contentURL.appending(components: appToken, "refs", "tags", version)
 
             let manifestURL = releaseBaseURL.appending(path: "manifest.json")
-            let manifest: ADPManifest
             let (mdata, mresponse) = try await URLSession.shared.data(for: URLRequest(url: manifestURL))
-            if (mresponse as? HTTPURLResponse)?.statusCode == 404 {
-                // the manifest.json does not yet exist; if we have specifid the ADPID, download it from the AltStore API, extract it, and upload it to the GitHub release
-                guard let adpid = self.adpid else {
-                    throw AppError("ADP manifest.json was not found in releases, and could not be automatically fetched due to lack of adpid argument")
-                }
-
-                msg(.info, "downloading ADP for id \(adpid)")
-                guard let marketplaceEndpoint = URL(string: sourceOptions.marketplaceService) else {
-                    throw AppError("AltStoreEndpoint was invalid: \(sourceOptions.marketplaceService)")
-                }
-                let downloadFile = try await MarketplaceEndpoint(endpointBase: marketplaceEndpoint).download(adpid: adpid, logger: { msg(.info, $0) })
-                defer { try? fm.removeItem(at: downloadFile) }
-
-                let tmpFolder = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-
-                try fm.unzipItem(at: downloadFile, to: tmpFolder)
-                defer { try? fm.removeItem(at: tmpFolder) }
-
-                // ensure that the manifest data exists in the folder
-                let manifestData = try Data(contentsOf: tmpFolder.appendingPathComponent("manifest.json"))
-                manifest = try JSONDecoder().decode(ADPManifest.self, from: manifestData)
-
-                let adpExtractedPaths = try fm.enumeratedURLs(of: tmpFolder)
-
-                // now upload the contents of the zip to the GitHub repository
-                let ghOut = try await githubReleaseUpload(appToken: appToken, version: marketingVersion, paths: adpExtractedPaths.filter(\.pathIsRegularFile))
-
-                msg(.info, "gh upload command: \(String(data: ghOut.stdout, encoding: .utf8) ?? "")")
-            } else {
-                try mresponse.validateHTTPCode() // make sure it wasn't some other error
-                manifest = try JSONDecoder().decode(ADPManifest.self, from: mdata)
-            }
+            try mresponse.validateHTTPCode()
+            let manifest: ADPManifest = try JSONDecoder().decode(ADPManifest.self, from: mdata)
 
             let marketplaceID = manifest.appleItemId
 
@@ -396,25 +404,6 @@ public struct SourceCommand : AsyncParsableCommand {
 
             let item = AltCatalogAppItem(name: productName, bundleIdentifier: bundleIdentifier, marketplaceID: marketplaceID, developerName: sourceOptions.developerName, subtitle: subtitle, localizedDescription: localizedDescription, iconURL: iconURL?.absoluteString, tintColor: tintColor, category: category, screenshots: screenshots, versions: [appVersion], appPermissions: appPermissions, patreon: nil)
             return (appToken, item)
-        }
-
-        /// Upload the specified file paths to the release for the given appToken and version
-        func githubReleaseUpload(appToken: String, version: String, paths: [URL]) async throws -> CommandResult {
-            // we fork the `gh release upload -R appfair/Tune-Out 1.0.2 files…` for this
-            let githubRepo = sourceOptions.fairgroundName + "/" + appToken
-            var args = ["release", "upload"]
-            if overwrite {
-                args += ["--clobber"]
-            }
-            args += ["-R", githubRepo]
-            args += [version]
-
-            args += paths.map(\.path)
-
-            msg(.info, "uploading to GitHub release for \(appToken)/\(version): \(args)")
-
-            let ghOut = try await Process.exec(cmd: "gh", args: args).expect()
-            return ghOut
         }
     }
 
@@ -610,5 +599,118 @@ extension CatalogCommand {
         let dataSource = try ZipArchiveDataWrapper(archive: ZipArchive(url: localURL, accessMode: .read))
 
         return dataSource
+    }
+}
+
+extension HubCommand {
+    func githubAPIRequest(url: URL, method: String? = nil) throws -> URLRequest {
+        guard let token = try self.hubOptions.fairHub().authToken else {
+            throw AppError("No GitHub token specified in arguments or GITHUB_TOKEN environment")
+        }
+
+        var request = URLRequest(url: url)
+        if let method {
+            request.httpMethod = method
+        }
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        return request
+    }
+
+    /// Upload the specified file paths to the release for the given appToken and version
+    func githubReleaseUpload(appToken: String, version: String, overwrite: Bool, paths: Set<URL>) async throws {
+        let orgName = self.hubOptions.organizationName
+        guard let releasesEndpoint = URL(string: "https://api.github.com/repos/\(orgName)/\(appToken)/releases") else {
+            throw AppError("Could not create base release URL from \(appToken)/\(version)")
+        }
+
+        // need to get the releaseID from the version tag
+        // https://docs.github.com/rest/releases/releases#get-a-release-by-tag-name
+        let releaseInfoURL = releasesEndpoint.appending(components: "tags", version)
+        msg(.info, "fetching release ID for: \(orgName)/\(appToken)/\(version) from: \(releaseInfoURL.absoluteString)")
+        let (releaseData, releaseResult) = try await URLSession.shared.data(for: githubAPIRequest(url: releaseInfoURL, method: "GET"))
+        try releaseResult.validateHTTPCode()
+        let releaseInfo = try JSONDecoder().decode(GitHubRepoReleasesResponse.self, from: releaseData)
+        let releaseID = releaseInfo.id
+        // create a map from name: digest
+        let releaseAssets: [String : (assetID: Int64?, digest: String?)] = Dictionary(releaseInfo.assets?.compactMap({ $0.name == nil ? nil : ($0.name!, (assetID: $0.id, digest: $0.digest)) }) ?? [], uniquingKeysWith: { $1 })
+
+        msg(.info, "fetched release ID for: \(orgName)/\(appToken)/\(version): \(releaseID)")
+        for path in paths.sorted(by: { $0.lastPathComponent > $1.lastPathComponent }) {
+            let assetName = path.lastPathComponent
+
+            let fileData = try Data(contentsOf: path, options: .mappedIfSafe)
+            let fileDigest = "sha256:" + fileData.sha256().hex()
+
+            // check to see if an asset already exists with the given name; if so, and if they checksum matches, skip over it; otherwise delete it so we can re-upload it
+            if let assetInfo = releaseAssets[assetName] {
+                if assetInfo.digest == fileDigest {
+                    msg(.info, "release asset: \(assetName) is already uploaded and digest matches: \(fileDigest)")
+                    continue
+                }
+
+                if let assetID = assetInfo.assetID {
+                    // release asset already exists with a different checksum; delete it so we can replace it
+                    // https://docs.github.com/rest/releases/assets#delete-a-release-asset
+                    let deleteAssetURL = releasesEndpoint.appending(components: "assets", "\(assetID)")
+                    let deleteRequest = try githubAPIRequest(url: deleteAssetURL, method: "DELETE")
+                    msg(.info, "deleting asset: \(deleteRequest)")
+                    let (deleteData, deleteResult) = try await URLSession.shared.data(for: deleteRequest)
+                    msg(.info, "delete asset response: \(String(data: deleteData, encoding: .utf8) ?? "none")")
+                    try deleteResult.validateHTTPCode()
+                    msg(.info, "delete asset result: \(String(data: deleteData, encoding: .utf8) ?? "none")")
+                }
+            }
+
+            guard let uploadURL = URL(string: "https://uploads.github.com/repos/\(orgName)/\(appToken)/releases/\(releaseID)/assets?name=\(assetName)") else {
+                throw AppError("Could not create URL for upload from \(appToken)/\(version)")
+            }
+            msg(.info, "uploading release asset: \(assetName) to \(uploadURL.absoluteString)")
+
+            // https://docs.github.com/rest/releases/assets
+            var request = try githubAPIRequest(url: uploadURL, method: "POST")
+            request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+
+            //request.httpBody = fileData
+            let (data, result) = try await URLSession.shared.upload(for: request, fromFile: path)
+            msg(.info, "result: \(String(data: data, encoding: .utf8) ?? "none")")
+            try result.validateHTTPCode()
+        }
+    }
+}
+
+/// Information about a GitHub release, including assets
+/// https://docs.github.com/rest/releases/releases#get-a-release-by-tag-name
+private struct GitHubRepoReleasesResponse : Decodable {
+    let id: Int64
+    let url: String
+    let assets_url: String
+    let node_id: String? // "RE_kwDOPbKbF84PVZY_"
+    let tag_name: String? // "1.0.7"
+    //let target_commitish: String? // "main"
+    let name: String? // "Release 1.0.7"
+    //let draft: Bool // false
+    //let immutable: Bool // false
+    //let prerelease: Bool // false
+    //let created_at: Date? // "2025-10-26T00:54:22Z"
+    //let updated_at: Date? // "2025-11-06T01:02:37Z"
+    //let published_at: Date? // "2025-10-26T01:19:18Z"
+    let assets: [Asset]?
+
+    struct Asset : Decodable {
+        //let url: String? // "https://api.github.com/repos/appfair/Tune-Out/releases/assets/312666587",
+        let id: Int64? // 312666587,
+        let node_id: String? // "RA_kwDOPbKbF84Sounb",
+        let name: String? // "06ccfb94-d5f3-3593-a57b-9030697f6a6b.ipa",
+        //let label: String? // "",
+        //let content_type: String? // "application/octet-stream",
+        let state: String? // "uploaded",
+        let size: Int64? // 968779,
+        let digest: String? // "sha256:c909df40ad2a4046b830444006a7d2aee2746fdcaea7fe2d40da12b0f7210f81",
+        //let download_count: Int? // 0,
+        //let created_at: Date? // "2025-11-05T02:26:36Z",
+        //let updated_at: Date? // "2025-11-05T02:26:36Z",
+        //let browser_download_url: String? // "https://github.com/appfair/Tune-Out/releases/download/1.0.7/06ccfb94-d5f3-3593-a57b-9030697f6a6b.ipa"
     }
 }
