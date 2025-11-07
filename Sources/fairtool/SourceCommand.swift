@@ -644,7 +644,8 @@ extension HubCommand {
         let releaseAssets: [String : (assetID: Int64?, digest: String?)] = Dictionary(releaseInfo.assets?.compactMap({ $0.name == nil ? nil : ($0.name!, (assetID: $0.id, digest: $0.digest)) }) ?? [], uniquingKeysWith: { $1 })
 
         msg(.info, "fetched release ID for: \(orgName)/\(appToken)/\(version): \(releaseID)")
-        for path in paths.sorted(by: { $0.lastPathComponent > $1.lastPathComponent }) {
+        // we sort the paths so that the manifest.json and signature is uploaded after the hashes, so that a partial upload is not incorrectly seen as being complete and valid
+        for path in paths.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
             let assetName = path.lastPathComponent
 
             let fileData = try Data(contentsOf: path, options: .mappedIfSafe)

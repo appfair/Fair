@@ -48,6 +48,7 @@ public struct ADPManifest: Codable, Equatable {
             public var algorithm: String // "sha256"
             public var chunkSize: Int64 // 183335
             public var encryptedChunkDigests: [String] // ["ecc9df4860bd98b17dd8eae7f6b7aa6371fb51911ad13578da2293409366e53c"]
+            public var unencryptedChunkDigests: [String]? // undocumented
         }
     }
 }

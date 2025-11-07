@@ -444,6 +444,7 @@ extension AppStoreConnectEndpoint {
 
             logger?("checking checksum at \(destination.path) against \(checksum ?? "none")")
             // first check to see if the file already exists, and if it matches the checksum, we don't need to download it again
+            // TODO: handle cases where there are multiple chunked hashes when assets are > 10MB (10485760)
             if let checksum, FileManager.default.isReadableFile(atPath: destination.path) {
                 let fileChecksum = try Data(contentsOf: destination, options: .mappedIfSafe).sha256().hex()
                 if checksum.lowercased() == fileChecksum.lowercased() {
@@ -484,11 +485,9 @@ extension AppStoreConnectEndpoint {
         }
         _ = variantsRelationship // TODO: cross-reference variants result with manifest variants to validate
         for variantInfo in manifest.variants {
-            let variantChecksum = variantInfo.variantDetails.sha256Hash
             logger?("downloading variant: \(variantInfo.assetPath)")
-            downloaded[variantInfo.assetPath] = try await downloadAsset(from: try await self.request(ADPVariantRequest(variantID: variantInfo.publicId)).data?.attributes.url, to: variantInfo.assetPath, checksum: variantChecksum)
+            downloaded[variantInfo.assetPath] = try await downloadAsset(from: try await self.request(ADPVariantRequest(variantID: variantInfo.publicId)).data?.attributes.url, to: variantInfo.assetPath, checksum: variantInfo.variantDetails.sha256Hash)
         }
-
 
         // download each of the deltas (optional; might not be included in the initial reported version)
         // “When App Store Connect sends a new app version notification, it sends an app distribution package that includes the variants first, followed by another for deltas, if any are available for the app. Deltas arrive an unspecified amount of time after the app’s variants. You don’t need to wait for deltas to arrive before serving the new app to devices. Rather, App Store Connect sends variants first to expedite the app’s availability for customers.”
@@ -501,9 +500,8 @@ extension AppStoreConnectEndpoint {
         }
         _ = deltasRelationship // TODO: cross-reference deltas result with manifest deltas to validate
         for deltaInfo in manifest.deltas {
-            let deltaChecksum = deltaInfo.deltaDetails.sha256Hash
             logger?("downloading delta: \(deltaInfo.assetPath)")
-            downloaded[deltaInfo.assetPath] = try await downloadAsset(from: try await self.request(ADPDeltaRequest(deltaID: deltaInfo.publicId)).data?.attributes.url, to: deltaInfo.assetPath, checksum: deltaChecksum)
+            downloaded[deltaInfo.assetPath] = try await downloadAsset(from: try await self.request(ADPDeltaRequest(deltaID: deltaInfo.publicId)).data?.attributes.url, to: deltaInfo.assetPath, checksum: deltaInfo.deltaDetails.sha256Hash)
         }
 
         return (manifest, downloaded)
@@ -521,6 +519,8 @@ private extension Data {
 
 private extension ADPManifest.AssetDetails {
     /// Returns the sha256 hash iff there is exactly a single one in the hashes list.
+    ///
+    /// FIXME: based on other sources with large assets, it appears that they will be chunked with a `chunkSize` of `10485760` and there will be multiple digests; we should support checking hashes that have chunked sizes, since those would benefit the most from caching
     var sha256Hash: String? {
         hashes.filter({ $0.algorithm == "sha256" }).onlyElement?.encryptedChunkDigests.onlyElement
     }
