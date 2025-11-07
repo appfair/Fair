@@ -27,10 +27,17 @@ public struct FairHub : GraphQLEndpointService {
     /// The signing key for the seal data, used to authenticate payloads
     public var fairsealKey: Data?
 
+    public var requestRetryCount: Int
+
+    /// The hardwired code that returns an HTTP error but contains information about backing off
+    /// 403 is just retry
+    /// 502 sometimes happens with large responses
+    public static var backoffCodes: IndexSet { IndexSet([403, 502]) }
+
     public typealias BaseFork = FairHub.CatalogForksQuery.QueryResponse.BaseRepository.Repository
 
     /// The FairHub is initialized with a host identifier (e.g., "github.com/appfair") that corresponds to the hub being used.
-    public init(hostOrg: String, authToken: String? = nil, fairsealIssuer: String?, fairsealKey: Data?) throws {
+    public init(hostOrg: String, authToken: String? = nil, fairsealIssuer: String?, fairsealKey: Data?, requestRetryCount: Int) throws {
         guard let url = URL(string: "https://api." + hostOrg) else {
             throw Errors.badHostOrg(hostOrg)
         }
@@ -40,6 +47,7 @@ public struct FairHub : GraphQLEndpointService {
         self.authToken = authToken
         self.fairsealIssuer = fairsealIssuer
         self.fairsealKey = fairsealKey
+        self.requestRetryCount = requestRetryCount
 
         if org.isEmpty {
             throw Errors.emptyOrganization(url)
@@ -56,11 +64,6 @@ public struct FairHub : GraphQLEndpointService {
             }
         }
     }
-
-    /// The hardwired code that returns an HTTP error but contains information about backing off
-    /// 403 is just retry
-    /// 502 sometimes happens with large responses
-    public static var backoffCodes: IndexSet { IndexSet([403, 502]) }
 }
 
 public struct ArtifactTarget : Codable, Hashable {

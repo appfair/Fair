@@ -140,7 +140,7 @@ public extension URLRequest {
     /// - Returns: the `Data` if it downloaded and validated
     func fetch(session: URLSession = .shared, validateFragmentHash: Bool = false) async throws -> Data {
         let (data, response) = try await session.fetch(request: self)
-        try response?.validateHTTPCode() // ensure the code in within the expected range
+        try response.validateHTTPCode() // ensure the code in within the expected range
 
         if validateFragmentHash == true,
             let fragmentHash = self.url?.fragment {
@@ -188,7 +188,7 @@ extension URLResponse {
 
 extension URLSession {
     /// Fetches the given request asynchronously, optionally validating that the response code is within the given range of HTTP codes.
-    public func fetch(request: URLRequest, validate codes: IndexSet? = IndexSet(200..<300)) async throws -> (data: Data, response: URLResponse?) {
+    public func fetch(request: URLRequest, validate codes: IndexSet? = IndexSet(200..<300)) async throws -> (data: Data, response: URLResponse) {
         return try await fetchTask(request: request, validate: codes)
     }
 

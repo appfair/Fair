@@ -474,11 +474,14 @@ public struct HubOptions: ParsableArguments {
     @Option(name: [.long], help: ArgumentHelp("The base64-encoded signing key for the fairseal issuer", valueName: "key"))
     public var fairsealKey: String?
 
+    @Option(name: [.long], help: ArgumentHelp("The number of times to retry a failed request to the hub", valueName: "count"))
+    public var hubRequestRetryCount: Int = 5
+
     public init() { }
 
     /// The hub service we should use for this tool
     public func fairHub() throws -> FairHub {
-        try FairHub(hostOrg: self.hub, authToken: self.token ?? ProcessInfo.processInfo.environment["GITHUB_TOKEN"], fairsealIssuer: self.fairsealIssuer, fairsealKey: self.fairsealKey.flatMap({ Data(base64Encoded: $0) }))
+        try FairHub(hostOrg: self.hub, authToken: self.token ?? ProcessInfo.processInfo.environment["GITHUB_TOKEN"], fairsealIssuer: self.fairsealIssuer, fairsealKey: self.fairsealKey.flatMap({ Data(base64Encoded: $0) }), requestRetryCount: hubRequestRetryCount)
     }
 
     /// The host service address. E.g., the "github.com" part of "github.com/appfair"

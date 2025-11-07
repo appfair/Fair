@@ -1127,6 +1127,7 @@ extension FileManager {
 
     func createParentDirectoryStructure(for url: URL) throws {
         let parentDirectoryURL = url.deletingLastPathComponent()
+        //dbg("creating parents: \(url.path)")
         try self.createDirectory(at: parentDirectoryURL, withIntermediateDirectories: true, attributes: nil)
     }
 
@@ -2828,8 +2829,13 @@ extension ZipArchive {
         var checksum = CRC32(0)
         switch entry.type {
         case .file:
-            guard !fileManager.itemExists(at: url) else {
-                throw CocoaError(.fileWriteFileExists, userInfo: [NSFilePathErrorKey: url.path])
+            //dbg("extracting file: \(url.path)")
+            if fileManager.itemExists(at: url) {
+                if overwrite == true {
+                    try fileManager.removeItem(at: url)
+                } else {
+                    throw CocoaError(.fileWriteFileExists, userInfo: [NSFilePathErrorKey: url.path])
+                }
             }
             try fileManager.createParentDirectoryStructure(for: url)
             let destinationRepresentation = fileManager.fileSystemRepresentation(withPath: url.path)
@@ -2841,13 +2847,14 @@ extension ZipArchive {
             checksum = try self.extract(entry, bufferSize: bufferSize, skipCRC32: skipCRC32,
                                         progress: progress, consumer: consumer)
         case .directory:
+            //dbg("extracting directory: \(url.path)")
             let consumer = { (_: Data) in
                 try fileManager.createDirectory(at: url, withIntermediateDirectories: true, attributes: nil)
             }
             checksum = try self.extract(entry, bufferSize: bufferSize, skipCRC32: skipCRC32,
                                         progress: progress, consumer: consumer)
         case .symlink:
-            //dbg("linking:", entry.path)
+            //dbg("extracting symlink: \(url.path)")
             if fileManager.itemExists(at: url) {
                 if overwrite == true {
                     try fileManager.removeItem(at: url) // otherwise `createSymbolicLink` will fail

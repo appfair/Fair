@@ -172,6 +172,12 @@ public struct SourceCommand : AsyncParsableCommand {
         @Flag(inversion: .prefixedNo, help: ArgumentHelp("Upload the app catalog for a single app GitHub release"))
         public var upload: Bool = false
 
+        @Option(name: .shortAndLong, help: ArgumentHelp("The base directory for downloading package"))
+        public var directory: String?
+
+        @Option(help: ArgumentHelp("The number of times to retry failed requests")) // TODO: not yet implemented
+        public var retryCount: Int?
+
         @Flag(inversion: .prefixedNo, help: ArgumentHelp("Whether to overwrite existing catalog uploads"))
         public var overwrite: Bool = true
 
@@ -201,7 +207,8 @@ public struct SourceCommand : AsyncParsableCommand {
             // when we specified the versionid and no app tokens, then download the version info
             let endpoint = try createASCEndpoint()
             let adpid = try await endpoint.resolveADPID(from: self.adpid, versionID: self.versionid)
-            let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).path
+
+            let directory = self.directory ?? FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).path
             let (manifest, files) = try await endpoint.downloadADP(adpid: adpid, directory: directory, logger: { msg(.info, $0) })
 
             let appBundle = manifest.bundleId
@@ -651,6 +658,10 @@ extension HubCommand {
                 }
 
                 if let assetID = assetInfo.assetID {
+                    if !overwrite {
+                        msg(.info, "release asset: \(assetName) is already uploaded with different digest but overwrite not specified")
+                        continue
+                    }
                     // release asset already exists with a different checksum; delete it so we can replace it
                     // https://docs.github.com/rest/releases/assets#delete-a-release-asset
                     let deleteAssetURL = releasesEndpoint.appending(components: "assets", "\(assetID)")

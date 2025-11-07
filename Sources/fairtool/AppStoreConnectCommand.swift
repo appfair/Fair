@@ -187,7 +187,7 @@ extension ASCCommand {
             throw AppError("Could not read the fastlane API Key JSON file at location specified by --keystore argument or 'FAIRTOOL_ASC_API_KEY_FILE' environment or default location: \(keystorePath)")
         }
         let keystoreURL = URL(filePath: keystorePath)
-        let endpoint = try AppStoreConnectEndpoint(keystoreURL: keystoreURL)
+        let endpoint = try AppStoreConnectEndpoint(keystoreURL: keystoreURL, requestRetryCount: ascOptions.ascRequestRetryCount)
         return endpoint
     }
 
@@ -196,6 +196,9 @@ extension ASCCommand {
 public struct ASCOptions: ParsableArguments {
     @Option(help: ArgumentHelp("The path to the fastlane API Key JSON file", valueName: "keystore"))
     public var keystore: String?
+
+    @Option(help: ArgumentHelp("The number of times to retry failed requests", valueName: "retries"))
+    public var ascRequestRetryCount: Int = 5
 
     public init() {
     }

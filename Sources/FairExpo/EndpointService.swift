@@ -9,6 +9,9 @@ public protocol EndpointService {
     /// The session that will be used to connect to a service
     var session: URLSession { get }
 
+    /// The number of times that a failed request should be retried before giving up
+    var requestRetryCount: Int { get }
+
     /// Creates a request for the given `APIRequest`
     func buildRequest<A: APIRequest>(for request: A, cache: URLRequest.CachePolicy?) throws -> URLRequest where A.Service == Self
 
@@ -114,7 +117,7 @@ extension EndpointService {
     }
 
     public func request<A: APIRequest>(_ request: A, cache: URLRequest.CachePolicy? = nil) async throws -> A.Response where A.Service == Self {
-        try await decode(data: try session.fetch(request: buildRequest(for: request, cache: cache)).data)
+        try await decode(data: try fetchWithRetry(buildRequest(for: request, cache: cache), retryCount: requestRetryCount).data)
     }
     
     /// Perform a request, but permit the data to be empty and and return nil.
@@ -133,7 +136,7 @@ extension EndpointService {
                 try await Task.sleep(interval: interleaveDelay)
             }
 
-            let (data, urlResponse) = try await fetchBatch(buildRequest(for: request, cache: cache))
+            let (data, urlResponse) = try await fetchWithRetry(buildRequest(for: request, cache: cache), retryCount: requestRetryCount)
             let batch: A.Response = try decode(data: data)
 
             if let stopValue = try batchHandler(requestIndex, urlResponse, batch) {
@@ -160,7 +163,7 @@ extension EndpointService {
     /// - Note: the retry mechanism only works with the generic "Retry-After" header. Custom endpoint-specific
     ///         rate limit handling (like GitHub's `x-ratelimit-limit`, `x-ratelimit-limit-remaining`, `x-ratelimit-limit-reset` headers)
     ///         are not yet supported.
-    private func fetchBatch(_ request: URLRequest, retryCount: Int = 10) async throws -> (Data, URLResponse?) {
+    func fetchWithRetry(_ request: URLRequest, retryCount: Int) async throws -> (data: Data, response: URLResponse) {
         var codes = IndexSet(200..<300)
         codes.formUnion(Self.backoffCodes)
         var retryCount = max(retryCount, 1)
@@ -171,7 +174,7 @@ extension EndpointService {
             retryCount -= 1
 
             let (data, response) = try await session.fetch(request: request, validate: IndexSet(codes))
-            dbg("batch response:", response)
+            dbg("response with retryCount \(retryCount):", response)
             //dbg("batch data:", data.utf8String)
 
             // rate limit exceeded will have a 403 error, a RetryDuration header, and a payload like:

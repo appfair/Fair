@@ -23,7 +23,7 @@ final class FairHubTests: XCTestCase {
         if skipNoAuth == true && Self.authToken == nil {
             throw XCTSkip("cannot run API tests without a token")
         }
-        return try FairHub(hostOrg: "github.com/" + appfairName, authToken: authToken, fairsealIssuer: "appfairbot", fairsealKey: nil)
+        return try FairHub(hostOrg: "github.com/" + appfairName, authToken: authToken, fairsealIssuer: "appfairbot", fairsealKey: nil, requestRetryCount: 5)
     }
 
     /// if the environment uses the "GH_TOKEN" or "GITHUB_TOKEN" (e.g., in an Action), then pass it along to the API requests

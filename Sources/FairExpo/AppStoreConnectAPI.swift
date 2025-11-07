@@ -17,14 +17,15 @@ public struct AppStoreConnectEndpoint : EndpointService {
     private var keystoreURL: URL
     private var keystore: FastlaneKeyJSON
     private var privateKey: P256.Signing.PrivateKey
-
+    public var requestRetryCount: Int
     public static var backoffCodes: IndexSet = []
 
-    public init(endpointBase: URL = URL(string: "https://api.appstoreconnect.apple.com/v1/")!, keystoreURL: URL) throws {
+    public init(endpointBase: URL = URL(string: "https://api.appstoreconnect.apple.com/v1/")!, keystoreURL: URL, requestRetryCount: Int) throws {
         self.endpointBase = endpointBase
         self.keystoreURL = keystoreURL
         self.keystore = try JSONDecoder().decode(FastlaneKeyJSON.self, from: Data(contentsOf: keystoreURL))
         self.privateKey = try keystore.loadPrivateKey(fromBaseURL: keystoreURL)
+        self.requestRetryCount = requestRetryCount
     }
 
     // https://docs.fastlane.tools/app-store-connect-api/#using-fastlane-api-key-json-file
@@ -361,6 +362,28 @@ extension AppStoreConnectEndpoint {
         return adpID
     }
 
+    func download(url: URL, successRange: Range<Int> = 200..<300) async throws -> (URL, URLResponse) {
+        // TODO: implement retryCount to handle various errors by re-trying after a delay, like is done with EndpointSerice.fetchWithRetry
+        var retries = max(1, self.requestRetryCount)
+        while retries > 0 {
+            retries -= 1
+            do {
+                let (downloadFile, response) = try await URLSession.shared.downloadFile(for: URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad))
+                try response.validateHTTPCode(inRange: successRange)
+                return (downloadFile, response)
+            } catch {
+                if retries == 0 {
+                    throw error
+                }
+                // e.g., retryCount = 5, reties = 3, backoff for 3 seconds
+                let backoff = min(1.0, (TimeInterval((self.requestRetryCount - retries)) * 5.0) + 1.0)
+                dbg("download error backoff=\(backoff): \(error)")
+                try await Task.sleep(interval: backoff)
+            }
+        }
+        throw ADPDownloadError(errorDescription: "did not try to download url: \(url)")
+    }
+
     /// Downloads all the assets from an Alternative Distribution Package to the speficied directory
     /// - Parameters:
     ///   - adpid: either the ADP ID or the version ID must be specified
@@ -388,7 +411,7 @@ extension AppStoreConnectEndpoint {
         }
 
         // download the URL and unzip manifest.json and signature to the directory
-        let (downloadFile, response) = try await URLSession.shared.downloadFile(for: URLRequest(url: manifestSignatureZipURL, cachePolicy: .returnCacheDataElseLoad))
+        let (downloadFile, response) = try await download(url: manifestSignatureZipURL)
         try response.validateHTTPCode()
         defer { try? FileManager.default.removeItem(at: downloadFile) }
 
@@ -396,9 +419,10 @@ extension AppStoreConnectEndpoint {
         let expandPath = URL(fileURLWithPath: directory ?? FileManager.default.currentDirectoryPath).appendingPathComponent(adpid, isDirectory: true)
 
         if expandPath.pathIsDirectory {
-            try FileManager.default.trash(url: expandPath)
+            // note that we do *not* trash the directory because we want to save previously-cached files in order to handle resuming interrupted transfers
+            //try FileManager.default.trash(url: expandPath)
         }
-        try FileManager.default.unzipItem(at: downloadFile, to: expandPath)
+        try FileManager.default.unzipItem(at: downloadFile, to: expandPath, overwrite: true)
 
         let signaturePath = expandPath.appendingPathComponent("signature", isDirectory: false)
         if !signaturePath.pathIsRegularFile {
@@ -415,11 +439,26 @@ extension AppStoreConnectEndpoint {
         let manifest = try JSONDecoder().decode(ADPManifest.self, from: Data(contentsOf: manifestPath))
         //try logger?(manifest)
 
-        func downloadAsset(from sourceURL: URL, to destinationPath: String, checksum: String?) async throws {
-            // TODO: retry options
-            let (downloadDeltaFile, response) = try await URLSession.shared.downloadFile(for: URLRequest(url: sourceURL, cachePolicy: .returnCacheDataElseLoad))
-            try response.validateHTTPCode()
+        func downloadAsset(from sourceURLClosure: @autoclosure () async throws -> URL?, to destinationPath: String, checksum: String?) async throws -> URL {
             let destination = expandPath.appending(path: destinationPath)
+
+            logger?("checking checksum at \(destination.path) against \(checksum ?? "none")")
+            // first check to see if the file already exists, and if it matches the checksum, we don't need to download it again
+            if let checksum, FileManager.default.isReadableFile(atPath: destination.path) {
+                let fileChecksum = try Data(contentsOf: destination, options: .mappedIfSafe).sha256().hex()
+                if checksum.lowercased() == fileChecksum.lowercased() {
+                    logger?("file at destination \(destination.path) already matches expected checksum, skipping download")
+                    return destination
+                }
+            }
+
+            guard let sourceURL = try await sourceURLClosure() else {
+                throw ADPDownloadError(errorDescription: "No data returned from API to get asset info")
+            }
+
+            let (downloadDeltaFile, response) = try await download(url: sourceURL)
+            try response.validateHTTPCode()
+            try? FileManager.default.removeItem(at: destination) // remove it if it happens to already exist
             try FileManager.default.moveItem(at: downloadDeltaFile, to: destination)
             if let checksum {
                 // validate the checksum if it is specified
@@ -428,7 +467,7 @@ extension AppStoreConnectEndpoint {
                     throw ADPDownloadError(errorDescription: "Checksum of downloaded file \(fileChecksum) does not match expected value \(checksum) at: \(destination.path)")
                 }
             }
-            downloaded[destinationPath] = destination
+            return destination
         }
 
         // Store the app data at an expected path
@@ -439,20 +478,15 @@ extension AppStoreConnectEndpoint {
         // GET https://api.appstoreconnect.apple.com/alternativeDistributionPackageVariants/219750db-80c2-4c75-aecc-fa67835f384d
 
         let variantsFolder = expandPath.appendingPathComponent("variant", isDirectory: true)
-        try FileManager.default.createDirectory(at: variantsFolder, withIntermediateDirectories: false)
+        try FileManager.default.createDirectory(at: variantsFolder, withIntermediateDirectories: true)
         guard let variantsRelationship = completedADPVersion.relationships["variants"] else {
             throw ADPDownloadError(errorDescription: "No variants found for ADP")
         }
         _ = variantsRelationship // TODO: cross-reference variants result with manifest variants to validate
         for variantInfo in manifest.variants {
+            let variantChecksum = variantInfo.variantDetails.sha256Hash
             logger?("downloading variant: \(variantInfo.assetPath)")
-            let variantResponse = try await self.request(ADPVariantRequest(variantID: variantInfo.publicId))
-
-            guard let variantResponseData = variantResponse.data else {
-                throw ADPDownloadError(errorDescription: "No data returned from API")
-            }
-            let variantChecksums = variantInfo.variantDetails.hashes.first(where: { $0.algorithm == "sha256" })?.encryptedChunkDigests
-            try await downloadAsset(from: variantResponseData.attributes.url, to: variantInfo.assetPath, checksum: variantChecksums?.count == 1 ? variantChecksums?.first : nil)
+            downloaded[variantInfo.assetPath] = try await downloadAsset(from: try await self.request(ADPVariantRequest(variantID: variantInfo.publicId)).data?.attributes.url, to: variantInfo.assetPath, checksum: variantChecksum)
         }
 
 
@@ -461,19 +495,15 @@ extension AppStoreConnectEndpoint {
         // https://developer.apple.com/documentation/marketplacekit/ingesting-an-alternative-distribution-package#Download-app-deltas
 
         let deltasFolder = expandPath.appendingPathComponent("delta", isDirectory: true)
-        try FileManager.default.createDirectory(at: deltasFolder, withIntermediateDirectories: false)
+        try FileManager.default.createDirectory(at: deltasFolder, withIntermediateDirectories: true)
         guard let deltasRelationship = completedADPVersion.relationships["deltas"] else {
             throw ADPDownloadError(errorDescription: "No deltas found for ADP")
         }
         _ = deltasRelationship // TODO: cross-reference deltas result with manifest deltas to validate
         for deltaInfo in manifest.deltas {
+            let deltaChecksum = deltaInfo.deltaDetails.sha256Hash
             logger?("downloading delta: \(deltaInfo.assetPath)")
-            let deltaResponse = try await self.request(ADPDeltaRequest(deltaID: deltaInfo.publicId))
-            guard let deltaResponseData = deltaResponse.data else {
-                throw ADPDownloadError(errorDescription: "No data in response")
-            }
-            let deltaChecksums = deltaInfo.deltaDetails.hashes.first(where: { $0.algorithm == "sha256" })?.encryptedChunkDigests
-            try await downloadAsset(from: deltaResponseData.attributes.url, to: deltaInfo.assetPath, checksum: deltaChecksums?.count == 1 ? deltaChecksums?.first : nil)
+            downloaded[deltaInfo.assetPath] = try await downloadAsset(from: try await self.request(ADPDeltaRequest(deltaID: deltaInfo.publicId)).data?.attributes.url, to: deltaInfo.assetPath, checksum: deltaChecksum)
         }
 
         return (manifest, downloaded)
@@ -486,5 +516,18 @@ private extension Data {
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
+    }
+}
+
+private extension ADPManifest.AssetDetails {
+    /// Returns the sha256 hash iff there is exactly a single one in the hashes list.
+    var sha256Hash: String? {
+        hashes.filter({ $0.algorithm == "sha256" }).onlyElement?.encryptedChunkDigests.onlyElement
+    }
+}
+private extension Collection {
+    /// Returns the first element iff the collection consists of a single element
+    var onlyElement: Element? {
+        return count == 1 ? first : nil
     }
 }

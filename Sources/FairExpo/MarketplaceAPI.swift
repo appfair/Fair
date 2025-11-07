@@ -12,10 +12,12 @@ public struct MarketplaceEndpoint : EndpointService {
     /// E.g., https://api.altstore.io
     public var endpointBase: URL
 
+    public var requestRetryCount: Int
     public static var backoffCodes: IndexSet = []
 
-    public init(endpointBase: URL) {
+    public init(endpointBase: URL, requestRetryCount: Int) {
         self.endpointBase = endpointBase
+        self.requestRetryCount = requestRetryCount
     }
 
     /// The HTTP headers that should be attached to all API requests
