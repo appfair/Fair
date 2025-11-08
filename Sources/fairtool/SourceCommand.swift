@@ -321,9 +321,11 @@ public struct SourceCommand : AsyncParsableCommand {
                 String(data: try dataSource.data(atPath: pathPrefix + "Darwin/fastlane/metadata/\(locale)/\(path)"), encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
             }
 
+            let localizedTitle = try loadDarwinFastlaneMetadata("title.txt")
             let localizedDescription = try loadDarwinFastlaneMetadata("description.txt")
             let subtitle = try loadDarwinFastlaneMetadata("subtitle.txt")
             let releaseNotes = try loadDarwinFastlaneMetadata("release_notes.txt")
+            let primaryCategory = try? loadDarwinFastlaneMetadata("primary_category.txt")
 
             let repositoryURL = try self.repositoryBaseURL.appending(component: appToken)
             let releaseBaseURL = repositoryURL.appending(components: "releases", "download", version)
@@ -389,8 +391,10 @@ public struct SourceCommand : AsyncParsableCommand {
 
             // TODO: parse category from Info.plist and map it into https://faq.altstore.io/developers/make-a-source#category-string
             // options: developer, entertainment, games, lifestyle, other, photo-video, social, utilities
-            // TODO: also parse the .xcconfig for INFOPLIST_KEY_LSApplicationCategoryType
-            let category: String = "other"
+            // TODO: also parse the .xcconfig for INFOPLIST_KEY_LSApplicationCategoryType like "public.app-category.utilities"
+            // TODO: fall back to names in fastlane primaryCategory
+            let _ = primaryCategory
+            let category = AltStoreCategory.other
 
             // the convention for the path of the app icon
             //let iconURL = rawContentURL.appending(path: "Darwin/Assets.xcassets/AppIcon.appiconset/AppIcon@3x.png")
@@ -409,7 +413,7 @@ public struct SourceCommand : AsyncParsableCommand {
 
             let screenshots: AltCatalogAppItem.ScreenshotCollection = .init(["iphone": screenshotURLs.map({ .init($0.absoluteString) })])
 
-            let item = AltCatalogAppItem(name: productName, bundleIdentifier: bundleIdentifier, marketplaceID: marketplaceID, developerName: sourceOptions.developerName, subtitle: subtitle, localizedDescription: localizedDescription, iconURL: iconURL?.absoluteString, tintColor: tintColor, category: category, screenshots: screenshots, versions: [appVersion], appPermissions: appPermissions, patreon: nil)
+            let item = AltCatalogAppItem(name: localizedTitle ?? productName, bundleIdentifier: bundleIdentifier, marketplaceID: marketplaceID, developerName: sourceOptions.developerName, subtitle: subtitle, localizedDescription: localizedDescription, iconURL: iconURL?.absoluteString, tintColor: tintColor, category: category, screenshots: screenshots, versions: [appVersion], appPermissions: appPermissions, patreon: nil)
             return (appToken, item)
         }
     }
@@ -497,7 +501,6 @@ public struct SourceCommand : AsyncParsableCommand {
             throw AppError("TODO")
         }
     }
-
 
     public struct NewsOptions: ParsableArguments, NewsItemFormat {
         @Option(name: [.long], help: ArgumentHelp("The post title format", valueName: "format"))

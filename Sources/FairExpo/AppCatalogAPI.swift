@@ -1,6 +1,44 @@
 import Foundation
 import FairCore
 
+extension AppCatalogIndex {
+    public static let appfairCatalogURL: URL! = URL(string: "https://appfair.net/appfair-apps.json")
+}
+
+
+/// The master list of apps and configuration for an app catalog.
+///
+/// This merely includes fundamental pointers to the app's location, like the app name and token and bundleID/appid.
+/// The remainder of the metadata will be fetched from the specific catalog (e.g., `altstore.json`, `fdroid.json`)
+/// attached to individual releases.
+///
+/// See: https://appfair.net/appfair-apps.json
+public struct AppCatalogIndex : Decodable {
+    public var catalogs: Catalogs
+    public var apps: [App]
+
+    public struct Catalogs : Decodable {
+        public var altstore: AltCatalog?
+        public var fdroid: FDroidIndex.Repo?
+    }
+
+    public struct App : Decodable {
+        public var token: String // e.g., "Skip-Notes"
+        public var ios: DarwinApp?
+        public var android: AndroidApp?
+
+        public struct DarwinApp : Decodable {
+            public var bundleId: String
+            public var appleItemId: String?
+        }
+
+        public struct AndroidApp : Decodable {
+            public var appid: String
+        }
+    }
+}
+
+
 extension Plist {
     /// A map of all the "*UsageDescription*" properties that have string values
     var usageDescriptions: [String: String] {
@@ -143,8 +181,6 @@ public struct LocalizedStringsFile {
         _ = try Plist(data: self.fileContents.utf8Data)
     }
 }
-
-
 
 /// https://docs.fastlane.tools/actions/deliver/#available-metadata-folder-options
 public struct AppMetadata : Codable {

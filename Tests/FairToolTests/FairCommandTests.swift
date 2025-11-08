@@ -227,27 +227,27 @@ final class FairCommandTests: XCTestCase {
         XCTAssertEqual(3, output.apps.count)
 
         let tuneOut = try XCTUnwrap(output.apps.dropFirst(0).first, "catalog should have contained at least one app")
-        XCTAssertEqual("TuneOut", tuneOut.name)
+        XCTAssertEqual("Tune-Out", tuneOut.name)
         XCTAssertEqual("org.appfair.app.Tune-Out", tuneOut.bundleIdentifier)
-        XCTAssertEqual("other", tuneOut.category) // FIXME
+        XCTAssertEqual("other", tuneOut.category?.rawValue) // FIXME
         XCTAssertEqual("1639901758", tuneOut.marketplaceID)
         XCTAssertEqual("Stream internet radio", tuneOut.subtitle)
         XCTAssertEqual(1, tuneOut.versions?.count)
         XCTAssertEqual(tuneOutVersion, tuneOut.versions?.first?.version)
 
         let netSkip = try XCTUnwrap(output.apps.dropFirst(1).first, "catalog should have contained a second app")
-        XCTAssertEqual("NetSkip", netSkip.name)
+        XCTAssertEqual("Net Skip", netSkip.name)
         XCTAssertEqual("org.appfair.app.Net-Skip", netSkip.bundleIdentifier)
-        XCTAssertEqual("other", netSkip.category) // FIXME
+        XCTAssertEqual("other", netSkip.category?.rawValue) // FIXME
         XCTAssertEqual("1640618584", netSkip.marketplaceID)
         XCTAssertEqual("A humane web browser", netSkip.subtitle)
         XCTAssertEqual(1, netSkip.versions?.count)
         XCTAssertEqual(netSkipVersion, netSkip.versions?.first?.version)
 
         let skipNotes = try XCTUnwrap(output.apps.dropFirst(2).first, "catalog should have contained a third app")
-        XCTAssertEqual("SkipNotes", skipNotes.name)
+        XCTAssertEqual("Skip Notes", skipNotes.name)
         XCTAssertEqual("org.appfair.app.SkipNotes", skipNotes.bundleIdentifier)
-        XCTAssertEqual("other", skipNotes.category) // FIXME
+        XCTAssertEqual("other", skipNotes.category?.rawValue) // FIXME
         XCTAssertEqual("6740916318", skipNotes.marketplaceID)
         XCTAssertEqual("Simple and secure notes", skipNotes.subtitle)
         XCTAssertEqual(1, skipNotes.versions?.count)

@@ -154,6 +154,8 @@ public struct FDroidIndex : Codable, Equatable {
     }
 
     /// A categorization of an app (e.g, "Connectivity", "Development", "Games", "Graphics", "Internet", "Money", "Multimedia", "Navigation", "Phone & SMS", "Reading", "Science & Education", "Security", "Sports & Health", "System", "Theming", "Time", "Writing")
+    ///
+    /// e.g., see the list at https://gitlab.com/fdroid/fdroiddata/-/blob/master/config/categories.yml
     public struct Category : Codable, Equatable {
         public var icon: LocalizedFile?
         public var name: LocalizedText?

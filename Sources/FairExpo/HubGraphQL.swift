@@ -6,7 +6,7 @@ public protocol GraphQLEndpointService : EndpointService {
 }
 
 /// An API request that is expected to use GraphQL `POST` requests.
-public protocol GraphQLAPIRequest : APIRequest where Service == FairHub {
+public protocol GraphQLAPIRequest : APIRequest where Service == GitHubEndpointService {
 }
 
 public extension GraphQLAPIRequest {
@@ -34,7 +34,7 @@ private protocol GraphQLAPIParameter {
     var parameterValue: JSON { get }
 }
 
-extension FairHub.GHID : GraphQLAPIParameter { var parameterValue: JSON { .string(self.rawValue) } }
+extension GitHubEndpointService.GHID : GraphQLAPIParameter { var parameterValue: JSON { .string(self.rawValue) } }
 extension String : GraphQLAPIParameter { var parameterValue: JSON { .string(self) } }
 extension Double : GraphQLAPIParameter { var parameterValue: JSON { .number(self) } }
 extension Int : GraphQLAPIParameter { var parameterValue: JSON { .number(Double(self)) } }
@@ -72,7 +72,7 @@ private extension String {
 
 private let gitHubServiceURL = URL(string: "https://api.github.com/graphql")!
 
-extension FairHub {
+extension GitHubEndpointService {
     /// The base URL for servicing GraphQL requests
     public var serviceURL: URL { gitHubServiceURL }
 
@@ -150,14 +150,14 @@ extension FairHub {
 
 // MARK: CurrentViewerLoginQuery
 
-extension FairHub {
+extension GitHubEndpointService {
     /// One of the simplest possible queries, it simply returns the current viewer's login
     ///
     /// Example usage:
     ///
     /// ```
-    /// let hub: FairHub = …
-    /// let response = try await hub.request(FairHub.CurrentViewerLoginQuery()).get()
+    /// let hub: GitHubEndpointService = …
+    /// let response = try await hub.request(GitHubEndpointService.CurrentViewerLoginQuery()).get()
     /// let login = response.data.viewer.login
     /// ```
     public struct CurrentViewerLoginQuery : GraphQLAPIRequest {
@@ -178,7 +178,7 @@ extension FairHub {
 
 // MARK: GetCommitQuery
 
-extension FairHub {
+extension GitHubEndpointService {
     public struct GetCommitQuery : GraphQLAPIRequest {
         public var owner: String
         public var name: String
@@ -268,7 +268,7 @@ extension FairHub {
 
 // MARK: RepositoryQuery
 
-extension FairHub {
+extension GitHubEndpointService {
     public struct RepositoryQuery : GraphQLAPIRequest {
         public var owner: String
         public var name: String
@@ -381,9 +381,9 @@ extension FairHub {
 
 // MARK: AppCasksTopicQuery / AppCasksStarQuery / AppCasksForkQuery
 
-extension FairHub {
+extension GitHubEndpointService {
     public struct AppCasksTopicQuery : GraphQLAPIRequest & CursoredAPIRequest {
-        public typealias Service = FairHub
+        public typealias Service = GitHubEndpointService
 
         public var topicName: String
 
@@ -448,7 +448,7 @@ extension FairHub {
     }
 
     public struct AppCasksStarQuery : GraphQLAPIRequest & CursoredAPIRequest {
-        public typealias Service = FairHub
+        public typealias Service = GitHubEndpointService
 
         public var starrerName: String
 
@@ -512,7 +512,7 @@ extension FairHub {
 
     /// The query to generate a catalog of enhanced cask metadata
     public struct AppCasksForkQuery : GraphQLAPIRequest & CursoredAPIRequest {
-        public typealias Service = FairHub
+        public typealias Service = GitHubEndpointService
 
         public var owner: String
         public var name: String
@@ -691,11 +691,11 @@ extension FairHub {
 
 // MARK: AppCaskReleasesQuery
 
-extension FairHub {
+extension GitHubEndpointService {
 
     /// The query to get additional pages of releases for `AppCasksForkQuery` when a fork has many releases
     public struct AppCaskReleasesQuery : GraphQLAPIRequest & CursoredAPIRequest {
-        public typealias Service = FairHub
+        public typealias Service = GitHubEndpointService
 
         /// The opaque ID of the fork repository
         public let repositoryNodeID: GHID
@@ -792,11 +792,11 @@ extension FairHub {
 
 // MARK: CatalogForksQuery
 
-extension FairHub {
+extension GitHubEndpointService {
 
     /// The query to generate a fair-ground catalog
     public struct CatalogForksQuery : GraphQLAPIRequest & CursoredAPIRequest {
-        public typealias Service = FairHub
+        public typealias Service = GitHubEndpointService
 
         public var owner: String
         public var name: String
@@ -1116,11 +1116,11 @@ extension FairHub {
 
 // NOTE: this is not yet used, but it could eventually be used as a more efficient way of generating the catalog than the CatalogForkQuery
 
-extension FairHub {
+extension GitHubEndpointService {
 
     /// The query to gather all the fairseal comments for a specific login
     public struct FairSealQuery : GraphQLAPIRequest & CursoredAPIRequest {
-        public typealias Service = FairHub
+        public typealias Service = GitHubEndpointService
 
         public var login: String
 
@@ -1200,7 +1200,7 @@ extension FairHub {
 
 // MARK: LookupPRNumberQuery
 
-extension FairHub {
+extension GitHubEndpointService {
 
     public struct LookupPRNumberQuery : GraphQLAPIRequest {
         let owner: String
@@ -1236,7 +1236,7 @@ extension FairHub {
 
 // MARK: PostCommentQuery
 
-extension FairHub {
+extension GitHubEndpointService {
 
     public struct PostCommentQuery : GraphQLAPIRequest {
         /// The issue or pull request ID
@@ -1286,7 +1286,7 @@ extension FairHub {
 
 // MARK: FindPullRequests
 
-extension FairHub {
+extension GitHubEndpointService {
 
     public struct FindPullRequests : GraphQLAPIRequest & CursoredAPIRequest {
         /// The owner organization for the PR
@@ -1377,7 +1377,7 @@ extension FairHub {
 
 // MARK: GetSponsorsQuery
 
-extension FairHub {
+extension GitHubEndpointService {
 
     public struct GetSponsorsQuery : GraphQLAPIRequest & CursoredAPIRequest {
         /// The owner organization for the PR
@@ -1561,7 +1561,7 @@ extension FairHub {
 // MARK: Semantic Forks
 
 
-extension FairHub {
+extension GitHubEndpointService {
 
     public struct SemanticForksQuery : GraphQLAPIRequest & CursoredAPIRequest {
         /// The owner organization for the PR
@@ -1757,7 +1757,7 @@ extension FairHub {
 }
 
 
-extension FairHub {
+extension GitHubEndpointService {
 
 
     /// [PullRequestState](https://docs.github.com/en/graphql/reference/enums#pullrequeststate)

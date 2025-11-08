@@ -446,8 +446,8 @@ public struct RegOptions: ParsableArguments {
 
     }
 
-    func createProjectConfiguration() throws -> FairHub.ProjectConfiguration {
-        try FairHub.ProjectConfiguration(allowName: joinWhitespaceSeparated(self.allowName), denyName: joinWhitespaceSeparated(self.denyFrom), allowFrom: joinWhitespaceSeparated(self.allowFrom), denyFrom: joinWhitespaceSeparated(self.denyFrom), allowLicense: joinWhitespaceSeparated(self.allowLicense))
+    func createProjectConfiguration() throws -> GitHubEndpointService.ProjectConfiguration {
+        try GitHubEndpointService.ProjectConfiguration(allowName: joinWhitespaceSeparated(self.allowName), denyName: joinWhitespaceSeparated(self.denyFrom), allowFrom: joinWhitespaceSeparated(self.allowFrom), denyFrom: joinWhitespaceSeparated(self.denyFrom), allowLicense: joinWhitespaceSeparated(self.allowLicense))
     }
 }
 
@@ -480,8 +480,8 @@ public struct HubOptions: ParsableArguments {
     public init() { }
 
     /// The hub service we should use for this tool
-    public func fairHub() throws -> FairHub {
-        try FairHub(hostOrg: self.hub, authToken: self.token ?? ProcessInfo.processInfo.environment["GITHUB_TOKEN"], fairsealIssuer: self.fairsealIssuer, fairsealKey: self.fairsealKey.flatMap({ Data(base64Encoded: $0) }), requestRetryCount: hubRequestRetryCount)
+    public func fairHub() throws -> GitHubEndpointService {
+        try GitHubEndpointService(hostOrg: self.hub, authToken: self.token ?? ProcessInfo.processInfo.environment["GITHUB_TOKEN"], fairsealIssuer: self.fairsealIssuer, fairsealKey: self.fairsealKey.flatMap({ Data(base64Encoded: $0) }), requestRetryCount: hubRequestRetryCount)
     }
 
     /// The host service address. E.g., the "github.com" part of "github.com/appfair"

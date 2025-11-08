@@ -90,16 +90,18 @@ public struct AltCatalogAppItem : Codable, Equatable {
     public var subtitle: String?
     /// A full-length description of your app. This can include any information you believe is relevant for your app, such as feature descriptions or additional links.
     public var localizedDescription: String?
-    /// Undocumented, but used by
-    public var _localizedDescription: [String: String]?
+    /// Undocumented, e.g.: `{ "en": "English description", "fr": "Description en français" }`
+    public var _localizedDescriptions: [String: String]?
     /// A link to you app's icon image. It will automatically be masked to an app icon shape.
     public var iconURL: String?
     /// The color used to theme your app's store page. We recommend using your app's existing tint color (if it has one), but you are free to choose any color you want.
     public var tintColor: String?
     /// The store category best representing your app.
-    public var category: String?
+    public var category: AltStoreCategory?
     /// Screenshots of your app. We recommend showcasing your app's main features.
     public var screenshots: ScreenshotCollection?
+    /// Undocumented
+    public var beta: Bool?
     /// A list of all the published versions of your app.
     public var versions: [AltCatalogAppItemVersion]?
     /// An object listing all entitlements and privacy permissions information used by the app.
@@ -112,7 +114,7 @@ public struct AltCatalogAppItem : Codable, Equatable {
     public typealias ScreenshotCollection = Either<[ScreenshotChoice]>.Or<[String: [ScreenshotChoice]]>
     public typealias ScreenshotChoice = Either<String>.Or<AppScreenshot>
 
-    public init(name: String, bundleIdentifier: String? = nil, marketplaceID: String? = nil, developerName: String? = nil, subtitle: String? = nil, localizedDescription: String? = nil, iconURL: String? = nil, tintColor: String? = nil, category: String? = nil, screenshots: ScreenshotCollection? = nil, versions: [AltCatalogAppItemVersion]? = nil, appPermissions: AltCatalogAppItemPermissions? = nil, patreon: AltCatalogAppItemPatreon? = nil) {
+    public init(name: String, bundleIdentifier: String? = nil, marketplaceID: String? = nil, developerName: String? = nil, subtitle: String? = nil, localizedDescription: String? = nil, iconURL: String? = nil, tintColor: String? = nil, category: AltStoreCategory? = nil, screenshots: ScreenshotCollection? = nil, versions: [AltCatalogAppItemVersion]? = nil, appPermissions: AltCatalogAppItemPermissions? = nil, patreon: AltCatalogAppItemPatreon? = nil) {
         self.name = name
         self.bundleIdentifier = bundleIdentifier
         self.marketplaceID = marketplaceID
@@ -126,6 +128,37 @@ public struct AltCatalogAppItem : Codable, Equatable {
         self.versions = versions
         self.appPermissions = appPermissions
         self.patreon = patreon
+    }
+}
+
+/// The store category best representing your app. One of: `developer`, `entertainment`, `games`, `lifestyle`, `other`, `photo-video`, `social`, `utilities`
+///
+/// https://faq.altstore.io/developers/make-a-source#category-string
+public struct AltStoreCategory : Codable, Equatable, RawRepresentable, CaseIterable {
+    public static let developer = AltStoreCategory(rawValue: "developer")
+    public static let entertainment = AltStoreCategory(rawValue: "entertainment")
+    public static let games = AltStoreCategory(rawValue: "games")
+    public static let lifestyle = AltStoreCategory(rawValue: "lifestyle")
+    public static let other = AltStoreCategory(rawValue: "other")
+    public static let photoVideo = AltStoreCategory(rawValue: "photo-video")
+    public static let social = AltStoreCategory(rawValue: "social")
+    public static let utilities = AltStoreCategory(rawValue: "utilities")
+
+    public static var allCases: [AltStoreCategory] = [
+        .developer,
+        .entertainment,
+        .games,
+        .lifestyle,
+        .other,
+        .photoVideo,
+        .social,
+        .utilities,
+    ]
+
+    public var rawValue: String
+
+    public init(rawValue: String) {
+        self.rawValue = rawValue
     }
 }
 

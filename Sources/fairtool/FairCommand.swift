@@ -372,7 +372,7 @@ extension FairCommand {
                     throw FairToolCommand.Errors.invalidIntegrationTitle(integrationTitle, expectedIntegrationTitle)
                 }
 
-                //let buildVersion = try FairHub.AppBuildVersion(plistURL: infoPlistURL)
+                //let buildVersion = try GitHubEndpointService.AppBuildVersion(plistURL: infoPlistURL)
                 //msg(.info, "Version", buildVersion.version.versionDescription, "(\(buildVersion.build))")
             }
 
@@ -417,11 +417,11 @@ extension FairCommand {
             msg(.info, "Successfully validated project:", projectOptions.projectPathURL(path: "").path)
         }
 
-        func verify(org: String, repo repoName: String, hub: FairHub) async throws {
+        func verify(org: String, repo repoName: String, hub: GitHubEndpointService) async throws {
             // when the app we are validating is the actual hub's root organization, use special validation rules (such as not requiring issues)
             msg(.info, "Validating App-Name:", org)
 
-            let response = try await hub.request(FairHub.RepositoryQuery(owner: org, name: repoName)).get().data
+            let response = try await hub.request(GitHubEndpointService.RepositoryQuery(owner: org, name: repoName)).get().data
             let organization = response.organization
             let repo = organization.repository
 
@@ -434,7 +434,7 @@ extension FairCommand {
             let _ = configuration
 //            let invalid = hub.validate(org: organization, configuration: configuration)
 //            if !invalid.isEmpty {
-//                throw FairHub.Errors.repoInvalid(invalid, org, repoName)
+//                throw GitHubEndpointService.Errors.repoInvalid(invalid, org, repoName)
 //            }
         }
     }

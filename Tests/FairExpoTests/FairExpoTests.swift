@@ -5,6 +5,22 @@ import FairExpo
 
 public class FairExpoTests : XCTestCase {
 
+    func testAppCatalogIndex() async throws {
+        /// https://appfair.net/appfair-apps.json
+        let (data, _) = try await URLSession.shared.fetch(request: URLRequest(url: AppCatalogIndex.appfairCatalogURL, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData))
+        let index = try JSONDecoder().decode(AppCatalogIndex.self, from: data)
+        XCTAssertGreaterThan(index.apps.count, 0)
+
+        XCTAssertEqual("The App Fair Project", index.catalogs.fdroid?.name["en-US"])
+        XCTAssertEqual("The App Fair Project", index.catalogs.altstore?.name)
+
+        XCTAssertEqual("https://appfair.net/fdroid/repo", index.catalogs.fdroid?.address)
+        XCTAssertEqual("https://appfair.org", index.catalogs.altstore?.website)
+
+        XCTAssertEqual("/icons/appfair-icon.png", index.catalogs.fdroid?.icon["en-US"]?.name)
+        XCTAssertEqual("https://appfair.net/appfair-icon.png", index.catalogs.altstore?.iconURL)
+    }
+
     func testParseCatalogs() throws {
         // list obtained from https://cdn.altstore.io/file/altstore/altstore/marketplace-sources.json
         let dir = ProcessInfo.processInfo.environment["FAIR_EXPO_TESTS_MARKETPLACE_SOURCES_DIR"] ?? "/opt/src/github/altstore/sources/marketplace-sources"

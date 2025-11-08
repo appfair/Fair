@@ -5,10 +5,10 @@ import FairCore
 public enum FairGround {
     /// A fairground that uses hosted git repository with a REST API,
     /// such as github.com
-    case hub(FairHub)
+    case hub(GitHubEndpointService)
 
-    /// The `FairHub` for repositories that use that model
-    public var hub: FairHub? {
+    /// The `GitHubEndpointService` for repositories that use that model
+    public var hub: GitHubEndpointService? {
         switch self {
         case .hub(let x): return x
         }
