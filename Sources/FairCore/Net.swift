@@ -189,31 +189,21 @@ extension URLResponse {
 extension URLSession {
     /// Fetches the given request asynchronously, optionally validating that the response code is within the given range of HTTP codes.
     public func fetch(request: URLRequest, validate codes: IndexSet? = IndexSet(200..<300)) async throws -> (data: Data, response: URLResponse) {
+        // on Darwin platforms, URLSession.shared.data works with file URLs, but fails on Linux, so manually check whether it is a file URL and load it from disk
+        if let url = request.url, url.isFileURL {
+            let data = try Data(contentsOf: url, options: .mappedIfSafe)
+            let response = URLResponse(url: url, mimeType: nil, expectedContentLength: data.count, textEncodingName: nil)
+            return (data, response)
+        }
+
         return try await fetchTask(request: request, validate: codes)
     }
 
     /// A shim for async URL download for back-ported async/await without corresponding URLSession API support
     private func fetchTask(request: URLRequest, validate codes: IndexSet?) async throws -> (data: Data, response: URLResponse) {
-        #if swift(<5.8)
-        return try await withCheckedThrowingContinuation { continuation in
-            dataTask(with: request) { data, response, error in
-                if let data = data, let response = response, error == nil {
-                    do {
-                        let validResponse = try response.validating(codes: codes)
-                        continuation.resume(returning: (data, validResponse))
-                    } catch {
-                        continuation.resume(throwing: error)
-                    }
-                } else {
-                    continuation.resume(throwing: error ?? CocoaError(.fileNoSuchFile))
-                }
-            }.resume()
-        }
-        #else
         let (data, response) = try await URLSession.shared.data(for: request)
         let validResponse = try response.validating(codes: codes)
         return (data, validResponse)
-        #endif
     }
 }
 

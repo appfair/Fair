@@ -525,7 +525,8 @@ private extension ADPManifest.AssetDetails {
         hashes.filter({ $0.algorithm == "sha256" }).onlyElement?.encryptedChunkDigests.onlyElement
     }
 }
-private extension Collection {
+
+extension Collection {
     /// Returns the first element iff the collection consists of a single element
     var onlyElement: Element? {
         return count == 1 ? first : nil

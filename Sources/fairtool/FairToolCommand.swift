@@ -206,33 +206,6 @@ extension JSON : SigningContainer {
 public typealias FairCommandOutput = Encodable // & Decodable
 
 
-public struct OutputOptions: ParsableArguments {
-    @Option(name: [.long, .customShort("o")], help: ArgumentHelp("The output path"))
-    public var output: String = "-"
-
-    @Flag(name: [.long], inversion: .prefixedNo, help: ArgumentHelp("Show no colors or progress animations"))
-    var plain: Bool = ProcessInfo.processInfo.environment["TERM"] == "dumb" || ProcessInfo.processInfo.environment["TERM"] == nil || (ProcessInfo.processInfo.environment["NO_COLOR"] ?? "").isEmpty == false // try to auto-detect when we shouldn't be using ANSI colors
-
-    public var term: Term {
-        plain || output != "-" ? .plain : .ansi
-    }
-
-    public init() { }
-
-    /// The flag for the output folder or the current directory
-    var outputDirectoryFlag: String {
-        self.output
-    }
-
-    func write(_ data: Data) throws {
-        if output == "-" {
-            print(data.utf8String ?? "")
-        } else {
-            try data.write(to: URL(fileURLWithPath: output))
-        }
-    }
-}
-
 /// Terminal output information, such as how to output messages in various ANSI colors.
 public struct Term {
     public static let plain = Term(colors: false)
@@ -298,16 +271,6 @@ public struct Term {
     }
 }
 
-
-
-extension OutputOptions {
-    func writeCatalog<T: Encodable>(_ catalog: T) throws -> Data {
-        let json = try catalog.toJSON(outputFormatting: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes], dateEncodingStrategy: .iso8601, dataEncodingStrategy: .base64)
-        try self.write(json)
-        return json
-    }
-}
-
 public struct SourceOptions: ParsableArguments {
     @Option(help: ArgumentHelp("The name of the developer of the catalog", valueName: "name"))
     public var developerName: String = "The App Fair Project"
@@ -316,49 +279,14 @@ public struct SourceOptions: ParsableArguments {
     public var catalogName: String = "The App Fair Project"
 
     @Option(help: ArgumentHelp("The base URL of the hub repository", valueName: "url"))
-    public var hubRepository: String = "https://delivery.appfair.net" // "https://github.com/appfair"
+    public var hubRepository: String = "https://delivery.appfair.net" // use redirect server instead of github.com directly
+    //public var hubRepository: String = "https://github.com/appfair"
 
     @Option(help: ArgumentHelp("The base URL of the hub raw content", valueName: "url"))
     public var hubContent: String = "https://assets.appfair.net" // "https://raw.githubusercontent.com/appfair"
 
-    @Option(help: ArgumentHelp("The subtitle of the catalog", valueName: "name"))
-    public var catalogSubtitle: String = "The free and open-source app catalog"
-
-    @Option(help: ArgumentHelp("The description for this catalog", valueName: "desc"))
-    public var catalogDescription: String = "This catalog contains free and open-source apps distributed through the App Fair Project."
-
-    @Option(help: ArgumentHelp("The icon URL of the catalog", valueName: "url"))
-    public var catalogIconURL: String = "https://appfair.org/appfair-icon.png"
-
-    @Option(help: ArgumentHelp("The web site of the catalog", valueName: "url"))
-    public var catalogWebsite: String = "https://appfair.org"
-
-    @Option(help: ArgumentHelp("The marketplace ADP processing endpoint", valueName: "url"))
-    public var marketplaceService: String = "https://api.altstore.io"
-
-    @Option(help: ArgumentHelp("The tint color for this catalog", valueName: "rgbhex"))
-    public var catalogTintColor: String?
-
-    // Per-app arguments
-
-    //    @Option(help: ArgumentHelp("The default description(s) for the app(s)", valueName: "desc"))
-    //    public var appLocalizedDescription: [String] = []
-    //
-    //    @Option(help: ArgumentHelp("The default versionDescription for the app(s)", valueName: "desc"))
-    //    public var appVersionDescription: [String] = []
-    //
-    //    @Option(help: ArgumentHelp("The default subtitle(s) for the app(s)", valueName: "title"))
-    //    public var appSubtitle: [String] = []
-    //
-    //    @Option(help: ArgumentHelp("The default developer name(s) for the app(s)", valueName: "email"))
-    //    public var appDeveloperName: [String] = []
-    //
-    //    @Option(help: ArgumentHelp("The download URLfor the app(s)", valueName: "URL"))
-    //    public var appDownloadURL: [String] = []
-
     public init() {
     }
-
 }
 
 public struct MsgOptions: ParsableArguments {
@@ -371,9 +299,24 @@ public struct MsgOptions: ParsableArguments {
     @Flag(name: [.long, .customShort("J")], help: ArgumentHelp("Exclude root JSON array from output"))
     public var promoteJSON: Bool = false
 
+    @Option(name: [.long, .customShort("o")], help: ArgumentHelp("The output path"))
+    public var output: String = "-"
+
+    @Flag(name: [.long], inversion: .prefixedNo, help: ArgumentHelp("Show no colors or progress animations"))
+    var plain: Bool = ProcessInfo.processInfo.environment["TERM"] == "dumb" || ProcessInfo.processInfo.environment["TERM"] == nil || (ProcessInfo.processInfo.environment["NO_COLOR"] ?? "").isEmpty == false // try to auto-detect when we shouldn't be using ANSI colors
+
+    public var term: Term {
+        plain || output != "-" ? .plain : .ansi
+    }
+
     public var messages: MessageBuffer? = nil
 
     public init() {
+    }
+
+    /// The flag for the output folder or the current directory
+    var outputDirectoryFlag: String {
+        self.output
     }
 
     /// Write the given message to standard out, unless the output buffer is set, in which case output is sent to the buffer
@@ -383,6 +326,21 @@ public struct MsgOptions: ParsableArguments {
         } else {
             print(value)
         }
+    }
+
+    /// Write the given data to the specified output file, or to stdout if it is not specified
+    func writeOutput(_ data: Data) throws {
+        if output == "-" {
+            write(data.utf8String ?? "")
+        } else {
+            try data.write(to: URL(fileURLWithPath: output), options: .atomic)
+        }
+    }
+
+    @discardableResult func writeEncodableOutput<T: Encodable>(_ catalog: T) throws -> Data {
+        let json = try catalog.toJSON(outputFormatting: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes], dateEncodingStrategy: .iso8601, dataEncodingStrategy: .base64)
+        try self.writeOutput(json)
+        return json
     }
 
     /// The output that comes at the beginning of a sequence of elements; an opening bracket, for JSON arrays

@@ -14,7 +14,7 @@ public class FairExpoTests : XCTestCase {
         XCTAssertEqual("The App Fair Project", index.catalogs.fdroid?.name["en-US"])
         XCTAssertEqual("The App Fair Project", index.catalogs.altstore?.name)
 
-        XCTAssertEqual("https://appfair.net/fdroid/repo", index.catalogs.fdroid?.address)
+        XCTAssertEqual("https://api.appfair.net/fdroid/repo/", index.catalogs.fdroid?.address)
         XCTAssertEqual("https://appfair.org", index.catalogs.altstore?.website)
 
         XCTAssertEqual("/icons/appfair-icon.png", index.catalogs.fdroid?.icon["en-US"]?.name)

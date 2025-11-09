@@ -12,7 +12,6 @@ extension FairCommand {
                                                                abstract: "Output metadata for the given app.",
                                                                shouldDisplay: !experimental)
         @OptionGroup public var msgOptions: MsgOptions
-        @OptionGroup public var outputOptions: OutputOptions
 
         @Option(name: [.long, .customShort("x")], help: ArgumentHelp("Export deliver metadata folder.", valueName: "dir"))
         public var export: String?

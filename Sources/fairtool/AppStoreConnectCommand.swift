@@ -23,7 +23,6 @@ public struct AppStoreConnectCommand : AsyncParsableCommand {
             )
 
         @OptionGroup public var msgOptions: MsgOptions
-        @OptionGroup public var outputOptions: OutputOptions
         @OptionGroup public var ascOptions: ASCOptions
 
         @Argument(help: "The full or partial URL to the ADP endpoint")
@@ -68,7 +67,6 @@ public struct AppStoreConnectCommand : AsyncParsableCommand {
 
     public struct ListAppsCommand: ASCCommand {
         @OptionGroup public var msgOptions: MsgOptions
-        @OptionGroup public var outputOptions: OutputOptions
         @OptionGroup public var ascOptions: ASCOptions
 
         public static var configuration = CommandConfiguration(
@@ -89,7 +87,6 @@ public struct AppStoreConnectCommand : AsyncParsableCommand {
     /// e.g.: `fairtool asc adp download -v --versionid 73d0251f-1f4e-4499-850f-53dcb1885b33`
     public struct DownloadADPCommand: ASCCommand {
         @OptionGroup public var msgOptions: MsgOptions
-        @OptionGroup public var outputOptions: OutputOptions
         @OptionGroup public var ascOptions: ASCOptions
 
         @Option(name: .shortAndLong, help: ArgumentHelp("The base directory for downloading package"))
@@ -131,7 +128,6 @@ public struct AppStoreConnectCommand : AsyncParsableCommand {
 
     public struct GetADPVersionCommand: ASCCommand {
         @OptionGroup public var msgOptions: MsgOptions
-        @OptionGroup public var outputOptions: OutputOptions
         @OptionGroup public var ascOptions: ASCOptions
 
         @Argument(help: "The version ID for the ADP")
@@ -154,7 +150,6 @@ public struct AppStoreConnectCommand : AsyncParsableCommand {
 
     public struct GetADPInfoCommand: ASCCommand {
         @OptionGroup public var msgOptions: MsgOptions
-        @OptionGroup public var outputOptions: OutputOptions
         @OptionGroup public var ascOptions: ASCOptions
 
         @Argument(help: "The version ID for the ADP")

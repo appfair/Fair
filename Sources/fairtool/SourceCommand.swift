@@ -30,9 +30,8 @@ public struct SourceCommand : AsyncParsableCommand {
         }
     }
 
-    public struct CreateFDroidCatalogCommand: CatalogCommand {
+    public struct CreateFDroidCatalogCommand: CreateCatalogCommand {
         @OptionGroup public var msgOptions: MsgOptions
-        @OptionGroup public var outputOptions: OutputOptions
         @OptionGroup public var sourceOptions: SourceOptions
 
         @Flag(inversion: .prefixedNo, help: ArgumentHelp("Upload the app catalog for a single app GitHub release"))
@@ -156,12 +155,12 @@ public struct SourceCommand : AsyncParsableCommand {
     /// Creates an AltStore source from one or more source folders or zip URLs.
     ///
     /// Example use: `fairtool source create altstore --adpid 412cd63d-180f-4ee0-a06a-accca8fe349e Skip-Notes/0.8.6`
-    public struct CreateAltStoreCatalogCommand: CatalogCommand, HubCommand, ASCCommand {
+    public struct CreateAltStoreCatalogCommand: CreateCatalogCommand, AppIndexCommand, HubCommand, ASCCommand {
         @OptionGroup public var msgOptions: MsgOptions
-        @OptionGroup public var outputOptions: OutputOptions
         @OptionGroup public var sourceOptions: SourceOptions
         @OptionGroup public var hubOptions: HubOptions
         @OptionGroup public var ascOptions: ASCOptions
+        @OptionGroup public var appIndexOptions: AppIndexOptions
 
         @Option(help: ArgumentHelp("The Alternative Distribution Package ID for the release", valueName: "id"))
         public var adpid: String?
@@ -215,32 +214,35 @@ public struct SourceCommand : AsyncParsableCommand {
             if !appBundle.hasPrefix("org.appfair.app.") {
                 throw AppError("Bundle for \(manifest.bundleId) is not in the expected format: org.appfair.app.<bundle-id>")
             }
-            
-            let appName = appBundle.split(separator: ".").last?.description ?? appBundle
+
+            // we need to look up the bundleID from the app index
+            let appIndex = try await appIndexOptions.fetchAppIndex()
+            guard let app = appIndex.apps.first(where: { $0.ios?.bundleId == appBundle }) else {
+                throw AppError("Could not locate bundle ID \(manifest.bundleId) is in app index at \(appIndexOptions.appIndex)")
+            }
+
+            let appToken = app.token
             let appVersion = manifest.shortVersionString
             
             // now upload files to releases…
             if uploadToHub {
-                try await githubReleaseUpload(appToken: appName, version: appVersion, overwrite: true, paths: Set(files.values))
+                try await githubReleaseUpload(appToken: appToken, version: appVersion, overwrite: true, paths: Set(files.values))
             }
 
             // now populate the app name and version from the bundle
-            return appName + "/" + appVersion
+            return appToken + "/" + appVersion
         }
         
         public func createCatalog() async throws -> Output {
             msg(.info, "creating altstore catalog")
             var catalog = AltCatalog()
             catalog.name = sourceOptions.catalogName
-            catalog.subtitle = sourceOptions.catalogSubtitle
-            catalog.description = sourceOptions.catalogDescription
-            catalog.website = sourceOptions.catalogWebsite
-            catalog.iconURL = sourceOptions.catalogIconURL
-            catalog.tintColor = sourceOptions.catalogTintColor
 
             var appTokens = appTokens
             if appTokens.isEmpty, (adpid != nil || versionid != nil) {
                 // no token specified; try to extract it from the adpid or versionid and transfer the ADP up to the githubReleases
+                // look up the bundle ID in the app tokens list
+                //let appIndex = try await appIndexOptions.fetchAppIndex()
                 appTokens = [try await fetchADP()]
             }
 
@@ -375,7 +377,7 @@ public struct SourceCommand : AsyncParsableCommand {
                 permissions.append(AltCatalogAppItemPermissions.PermissionPrivacy(name: key, usageDescription: value))
             }
             if !permissions.isEmpty {
-                appPermissions.privacy = .init(permissions)
+                appPermissions.privacy = .init(permissions.sorting(by: \.name))
             }
 
             let entitlementsPlist = try Plist(data: dataSource.data(atPath: pathPrefix + "Darwin/Entitlements.plist"))
@@ -386,7 +388,7 @@ public struct SourceCommand : AsyncParsableCommand {
                 }
             }
             if !entitlements.isEmpty {
-                appPermissions.entitlements = entitlements.map({ .init($0) })
+                appPermissions.entitlements = entitlements.sorting(by: \.name).map({ .init($0) })
             }
 
             // TODO: parse category from Info.plist and map it into https://faq.altstore.io/developers/make-a-source#category-string
@@ -431,10 +433,10 @@ public struct SourceCommand : AsyncParsableCommand {
         }
     }
 
-    public struct MergeFDroidCatalogCommand: CatalogCommand {
+    public struct MergeFDroidCatalogCommand: AppIndexCommand {
         @OptionGroup public var msgOptions: MsgOptions
-        @OptionGroup public var outputOptions: OutputOptions
         @OptionGroup public var sourceOptions: SourceOptions
+        @OptionGroup public var appIndexOptions: AppIndexOptions
 
         @Flag(inversion: .prefixedNo, help: ArgumentHelp("Upload the app catalog for a single app GitHub release"))
         public var upload: Bool = false
@@ -455,50 +457,75 @@ public struct SourceCommand : AsyncParsableCommand {
         public init() {
         }
 
-        public func executeCommand() -> AsyncThrowingStream<Output, Error> {
-            return executeStream([()]) { void in
-                return try await mergeCatalogs()
-            }
-        }
-
-        public func mergeCatalogs() async throws -> Output {
-            msg(.info, "merging f-droid catalog")
+        public func run() async throws {
+            msg(.info, "merging altstore catalog")
             throw AppError("TODO")
+
+//            let output = try await createCatalog()
+//            try msgOptions.writeOutput(output)
         }
     }
 
-    public struct MergeAltStoreCatalogCommand: CatalogCommand {
+    public struct MergeAltStoreCatalogCommand: AppIndexCommand {
         @OptionGroup public var msgOptions: MsgOptions
-        @OptionGroup public var outputOptions: OutputOptions
         @OptionGroup public var sourceOptions: SourceOptions
+        @OptionGroup public var appIndexOptions: AppIndexOptions
 
         @Flag(inversion: .prefixedNo, help: ArgumentHelp("Upload the app catalog for a single app GitHub release"))
         public var upload: Bool = false
 
-        @Flag(inversion: .prefixedNo, help: ArgumentHelp("Whether to overwrite existing catalog uploads"))
-        public var overwrite: Bool = true
-
-        @Argument(help: ArgumentHelp("App token/versions to merge", valueName: "apps"))
-        public var apps: [String]
+        //@Flag(inversion: .prefixedNo, help: ArgumentHelp("Whether to overwrite existing catalog uploads"))
+        //public var overwrite: Bool = true
 
         public static var configuration = CommandConfiguration(
             commandName: "altstore",
             abstract: "Merge AltStore catalogs into a single source")
 
-        public typealias Output = FDroidIndex
+        public typealias Output = AltCatalog
 
         public init() {
         }
 
-        public func executeCommand() -> AsyncThrowingStream<Output, Error> {
-            return executeStream([()]) { void in
-                return try await mergeCatalogs()
-            }
-        }
-
-        public func mergeCatalogs() async throws -> Output {
+        public func run() async throws {
             msg(.info, "merging altstore catalog")
-            throw AppError("TODO")
+
+            // fetch catalog template and app list from appIndexOptions
+            let indexSource: AppCatalogIndex = try await appIndexOptions.fetchAppIndex()
+            var altSourceIndex: Output = indexSource.catalogs.altstore ?? AltCatalog()
+
+            // go through each app and fetch the latest releases/altstore.json
+            for app in indexSource.apps {
+                guard let ios = app.ios else {
+                    continue // Android-only app
+                }
+
+                msg(.info, "app: \(ios.bundleId)")
+
+                // get the releases feed from the app release
+                let releaseTags = try await self.fetchReleaseTags(token: app.token)
+                var altstoreData: Data?
+                for version in releaseTags {
+                    let altstoreURL = try releaseAssetURL(token: app.token, version: version, resource: "altstore.json")
+                    do {
+                        (altstoreData, _) = try await URLSession.shared.fetch(request: URLRequest(url: altstoreURL))
+                        break
+                    } catch {
+                        // we tolerate missing assets because a release might not yet contain the altstore data due to the ADP not yet being uploaded; try the next release
+                        continue
+                    }
+                }
+                if let altstoreData {
+                    let altstoreFragment = try JSONDecoder().decode(AltCatalog.self, from: altstoreData)
+                    guard let app = altstoreFragment.apps.first else {
+                        throw AppError("AltStore catalog did not contain any apps")
+                    }
+
+                    // add the app to the catalog
+                    altSourceIndex.apps.append(app)
+                }
+            }
+
+            try msgOptions.writeEncodableOutput(altSourceIndex)
         }
     }
 
@@ -542,6 +569,30 @@ public protocol NewsItemFormat {
 
 protocol CatalogCommand : FairParsableCommand {
     var sourceOptions: SourceOptions { get }
+}
+
+protocol CreateCatalogCommand : CatalogCommand {
+}
+
+protocol AppIndexCommand : CatalogCommand {
+    var appIndexOptions: AppIndexOptions { get }
+}
+
+public struct AppIndexOptions: ParsableArguments {
+    /// https://appfair.net/appfair-apps.json
+    @Option(help: ArgumentHelp("The URL of the catalog index", valueName: "url"))
+    public var appIndex: String = "https://appfair.net/appfair-apps.json"
+
+    public init() {
+    }
+    
+    /// Fetches and parsed the app index from the given index parameter
+    func fetchAppIndex() async throws -> AppCatalogIndex {
+        let url = URL(fileOrScheme: self.appIndex)
+        let (data, _) = try await URLSession.shared.fetch(request: URLRequest(url: url))
+        let index = try JSONDecoder().decode(AppCatalogIndex.self, from: data)
+        return index
+    }
 }
 
 extension CatalogCommand {
@@ -593,6 +644,11 @@ extension CatalogCommand {
         }
     }
 
+    func releaseAssetURL(token: String, version: String, resource: String) throws -> URL {
+        // e.g.: https://delivery.appfair.net/Tune-Out/releases/download/1.0.8/altstore.json
+        try repositoryBaseURL.appending(path: token).appending(components: "releases", "download", version, resource)
+    }
+
     func fetchSourceZip(token: String, version: String) async throws -> ZipArchiveDataWrapper {
         let repositoryURL = try repositoryBaseURL.appending(path: token)
 
@@ -639,8 +695,8 @@ extension HubCommand {
         // https://docs.github.com/rest/releases/releases#get-a-release-by-tag-name
         let releaseInfoURL = releasesEndpoint.appending(components: "tags", version)
         msg(.info, "fetching release ID for: \(orgName)/\(appToken)/\(version) from: \(releaseInfoURL.absoluteString)")
-        let (releaseData, releaseResult) = try await URLSession.shared.data(for: githubAPIRequest(url: releaseInfoURL, method: "GET"))
-        try releaseResult.validateHTTPCode()
+        let (releaseData, releaseResult) = try await URLSession.shared.fetch(request: githubAPIRequest(url: releaseInfoURL, method: "GET"))
+        _ = releaseResult
         let releaseInfo = try JSONDecoder().decode(GitHubRepoReleasesResponse.self, from: releaseData)
         let releaseID = releaseInfo.id
         // create a map from name: digest
@@ -671,10 +727,9 @@ extension HubCommand {
                     let deleteAssetURL = releasesEndpoint.appending(components: "assets", "\(assetID)")
                     let deleteRequest = try githubAPIRequest(url: deleteAssetURL, method: "DELETE")
                     msg(.info, "deleting asset: \(deleteRequest)")
-                    let (deleteData, deleteResult) = try await URLSession.shared.data(for: deleteRequest)
-                    msg(.info, "delete asset response: \(String(data: deleteData, encoding: .utf8) ?? "none")")
-                    try deleteResult.validateHTTPCode()
-                    msg(.info, "delete asset result: \(String(data: deleteData, encoding: .utf8) ?? "none")")
+                    let (deleteData, deleteResult) = try await URLSession.shared.fetch(request: deleteRequest)
+                    _ = deleteResult
+                    msg(.debug, "delete asset response: \(String(data: deleteData, encoding: .utf8) ?? "none")")
                 }
             }
 

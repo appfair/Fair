@@ -24,7 +24,6 @@ public struct BrewCommand : AsyncParsableCommand {
         @OptionGroup public var msgOptions: MsgOptions
         @OptionGroup public var hubOptions: HubOptions
         @OptionGroup public var retryOptions: RetryOptions
-        @OptionGroup public var outputOptions: OutputOptions
         @OptionGroup public var sourceOptions: SourceOptions
 
         @Option(name: [.long, .customShort("C")], help: ArgumentHelp("The name of the hub's base casks repository.", valueName: "repo"))

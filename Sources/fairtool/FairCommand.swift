@@ -105,7 +105,6 @@ extension FairCommand {
                                                                abstract: "Merge base fair-ground updates into the project.",
                                                                shouldDisplay: !experimental)
         @OptionGroup public var msgOptions: MsgOptions
-        @OptionGroup public var outputOptions: OutputOptions
         @OptionGroup public var projectOptions: ProjectOptions
         @OptionGroup public var regOptions: RegOptions
         @OptionGroup public var validateOptions: ValidateOptions
@@ -118,14 +117,14 @@ extension FairCommand {
             warnExperimental(Self.experimental)
             msg(.info, "merge")
 
-            if outputOptions.outputDirectoryFlag == projectOptions.projectPathFlag {
-                throw FairToolCommand.Errors.sameOutputAndProjectPath(outputOptions.outputDirectoryFlag, projectOptions.projectPathFlag)
+            if msgOptions.outputDirectoryFlag == projectOptions.projectPathFlag {
+                throw FairToolCommand.Errors.sameOutputAndProjectPath(msgOptions.outputDirectoryFlag, projectOptions.projectPathFlag)
             }
 
-            let outputURL = URL(fileURLWithPath: outputOptions.outputDirectoryFlag)
+            let outputURL = URL(fileURLWithPath: msgOptions.outputDirectoryFlag)
             let projectURL = URL(fileURLWithPath: projectOptions.projectPathFlag)
             if outputURL.absoluteString == projectURL.absoluteString {
-                throw FairToolCommand.Errors.sameOutputAndProjectPath(outputOptions.outputDirectoryFlag, projectOptions.projectPathFlag)
+                throw FairToolCommand.Errors.sameOutputAndProjectPath(msgOptions.outputDirectoryFlag, projectOptions.projectPathFlag)
             }
 
             // try await validate() // always validate first
@@ -888,7 +887,6 @@ extension FairCommand {
         @OptionGroup public var caskOptions: CaskOptions
         @OptionGroup public var sourceOptions: SourceOptions
         @OptionGroup public var retryOptions: RetryOptions
-        @OptionGroup public var outputOptions: OutputOptions
 
         @Flag(name: [.long], help: ArgumentHelp("Whether the include funding source info.", valueName: "funding"))
         public var fundingSources: Bool = false
@@ -940,7 +938,7 @@ extension FairCommand {
 //            }
 //
 //            let json = try catalog.toJSON(outputFormatting: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes], dateEncodingStrategy: .iso8601, dataEncodingStrategy: .base64)
-//            try outputOptions.write(json)
+//            try msgOptions.write(json)
 //            msg(.info, "Wrote catalog size:", json.count)
 //
 //            if let caskFolderFlag = caskOptions.caskFolder {

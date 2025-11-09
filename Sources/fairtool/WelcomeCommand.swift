@@ -9,7 +9,7 @@ public struct WelcomeCommand : AsyncParsableCommand {
         abstract: "Show a welcome message for the tool.",
         shouldDisplay: false)
 
-    @OptionGroup public var outputOptions: OutputOptions
+    @OptionGroup public var msgOptions: MsgOptions
 
     public init() {
     }
@@ -17,7 +17,7 @@ public struct WelcomeCommand : AsyncParsableCommand {
     public mutating func run() async throws {
         let v = Bundle.fairCoreVersion?.versionString ?? ""
 
-        let term = outputOptions.term
+        let term = msgOptions.term
 
         /// Colorize ASCI art banner by in fixed-width columns
         func col(_ value: String) -> String {
@@ -31,12 +31,12 @@ public struct WelcomeCommand : AsyncParsableCommand {
             + term.magenta(value.slice(13, 15))  // l
         }
 
-        try outputOptions.write("""
+        msgOptions.write("""
         \(col("▐▘  ▘  ▗     ▜ "))
         \(col("▜▘▀▌▌▛▘▜▘▛▌▛▌▐ "))
         \(col("▐ █▌▌▌ ▐▖▙▌▙▌▐▖")) \(v)
 
         Run fairtool --help for usage
-        """.utf8Data)
+        """)
     }
 }

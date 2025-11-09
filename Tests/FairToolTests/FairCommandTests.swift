@@ -198,6 +198,16 @@ final class FairCommandTests: XCTestCase {
         XCTAssertGreaterThan(count, 0, "expected at least one result")
     }
 
+    func testSourceMergeAltStoreCommand() async throws {
+        let args: [String] = ["--app-index", "https://appfair.net/appfair-apps.json"]
+
+        let (mergedCatalog, messages) = try await runToolOutputSingle(SourceCommand.configuration, SourceCommand.MergeCommand.configuration, cmd: SourceCommand.MergeAltStoreCatalogCommand.self, args: Array(args))
+
+        _ = messages
+
+        XCTAssertEqual("The App Fair Project", mergedCatalog.name)
+    }
+
     func testAppStoreConnectListAppsCommand() async throws {
         if !FileManager.default.isReadableFile(atPath: fairtoolDefaultKeystorePath) {
             throw XCTSkip("Skipping test due to missing keystore")
