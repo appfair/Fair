@@ -180,6 +180,9 @@ public struct SourceCommand : AsyncParsableCommand {
         @Flag(inversion: .prefixedNo, help: ArgumentHelp("Whether to overwrite existing catalog uploads"))
         public var overwrite: Bool = true
 
+        @Flag(inversion: .prefixedNo, help: ArgumentHelp("Whether to generate assetURLs redirects for flattened assets"))
+        public var generateAssetURLs: Bool = false // we default this to false in order to allow delivery.appfair.net/.htaccess to handle the recdirects for delta/ and variant/ folders
+
         @Argument(help: ArgumentHelp("App token/versions for the catalog", valueName: "apps"))
         public var appTokens: [String] = []
 
@@ -348,14 +351,18 @@ public struct SourceCommand : AsyncParsableCommand {
             }
 
             // build the mapping from delta/variant asset to the flattened form stored at the GitHub release
-            var assetURLs: [String: String] = [:]
-            assetURLs["manifest"] = manifestURL.absoluteString
-            assetURLs["signature"] = releaseBaseURL.appending(path: "signature").absoluteString
-            // all the other assets are either deltas/ or variants/
-            for assetPath in manifest.deltas.map(\.assetPath) + manifest.variants.map(\.assetPath) {
-                guard let lastAssetPath = assetPath.split(separator: "/").last else { continue }
-                let lastAssetBase = lastAssetPath.split(separator: ".").dropLast().joined(separator: ".")
-                assetURLs[lastAssetBase] = releaseBaseURL.appending(path: lastAssetPath).absoluteString
+            var assetURLs: [String: String]? = nil
+
+            if generateAssetURLs {
+                assetURLs = [:]
+                assetURLs?["manifest"] = manifestURL.absoluteString
+                assetURLs?["signature"] = releaseBaseURL.appending(path: "signature").absoluteString
+                // all the other assets are either deltas/ or variants/
+                for assetPath in manifest.deltas.map(\.assetPath) + manifest.variants.map(\.assetPath) {
+                    guard let lastAssetPath = assetPath.split(separator: "/").last else { continue }
+                    let lastAssetBase = lastAssetPath.split(separator: ".").dropLast().joined(separator: ".")
+                    assetURLs?[lastAssetBase] = releaseBaseURL.appending(path: lastAssetPath).absoluteString
+                }
             }
 
             // the app version seems to require a size, but that doesn't make sense for a PAL catalog with the separate ADP segments; so just take the largest size of all the variants

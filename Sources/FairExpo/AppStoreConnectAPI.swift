@@ -65,7 +65,7 @@ public struct AppStoreConnectEndpoint : EndpointService {
     /// Creates a JWT token for signing requests to the ASC API.
     ///
     /// See https://developer.apple.com/documentation/appstoreconnectapi/generating-tokens-for-api-requests
-    func createJTWBearerToken() throws -> String {
+    func createJWTBearerToken() throws -> String {
         let header = ["alg": "ES256", "typ": "JWT", "kid": keystore.key_id]
         let iat = Int(Date().timeIntervalSince1970)
         let exp = iat + (keystore.duration ?? 1200) // 20 minute default
@@ -85,7 +85,7 @@ public struct AppStoreConnectEndpoint : EndpointService {
     public var requestHeaders: [String: String] {
         get throws {
             var headers: [String: String] = [:]
-            let jwt = try createJTWBearerToken()
+            let jwt = try createJWTBearerToken()
             headers["Authorization"] = "Bearer \(jwt)"
             headers["Accept"] = "application/json"
             headers["User-Agent"] = "fairtool/\(Bundle.fairCoreVersion?.versionString ?? "development")"

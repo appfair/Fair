@@ -439,15 +439,6 @@ final class FairCommandTests: XCTestCase {
         }
     }
 
-//    func testFairsealCommand() async throws {
-//        do {
-//            let result = try await runTool(type: FairCommand.configuration.commandName, op: FairCommand.FairsealCommand.configuration)
-//            XCTAssertFalse(result.messages.isEmpty)
-//        } catch {
-//            //XCTAssertEqual("\(error)", #"CommandError(commandStack: [FairApp.FairToolCommand, FairApp.FairToolCommand.FairsealCommand], parserError: FairCore.ParserError.noValue(forKey: FairCore.InputKey(rawValue: "hub")))"#)
-//        }
-//    }
-
     func testCatalogCommand() async throws {
         do {
             let result = try await runTool(FairCommand.configuration, FairCommand.CatalogCommand.configuration)
@@ -475,25 +466,6 @@ final class FairCommandTests: XCTestCase {
         let stats = try await HomebrewAPI(caskAPIEndpoint: HomebrewAPI.defaultEndpoint).fetchAppStats()
         XCTAssertGreaterThan(stats.total_count, 1000, "too few casks") // 13936 at last count
     }
-
-    #if !os(Windows) // async test compile issues: “error: invalid conversion from 'async' function of type '() async throws -> ()' to synchronous function type '() throws -> Void'”
-    @available(macOS 11, iOS 14, *)
-    func XXXtestCLIHelp() async throws {
-        await FairToolCommand.main(["help"])
-    }
-    #endif
-
-    /// if the environment uses the "GH_TOKEN" or "GITHUB_TOKEN" (e.g., in an Action), then pass it along to the API requests
-    static let authToken: String? = ProcessInfo.processInfo.environment["GH_TOKEN"] ?? ProcessInfo.processInfo.environment["GITHUB_TOKEN"]
-
-
-    #if !os(Windows) // async test compile issues: “error: invalid conversion from 'async' function of type '() async throws -> ()' to synchronous function type '() throws -> Void'”
-    @available(macOS 11, iOS 14, *)
-    func XXXtestCLICatalog() async throws {
-        //if Self.authToken == nil { throw XCTSkip("cannot run API tests without a token") }
-        await FairToolCommand.main(["fairtool", "catalog", "--org", "App-Fair", "--fairseal-issuer", "appfairbot", "--hub", "github.com/appfair", "--token", Self.authToken ?? "", "--output", "/tmp/fairapps-\(UUID().uuidString).json"])
-    }
-    #endif
 
     /// Ensures that the catalog verifies against various public sources
     func testExternalCatalogVerification() async throws {
