@@ -201,7 +201,7 @@ final class CryptoTests: XCTestCase {
 
     }
 
-    /// Tests [3.2.3. Sorting of Object Properties](https://tools.ietf.org/id/draft-rundgren-json-canonicalization-scheme-05.html#json.sorting.properties)
+    /// Tests [3.2.3. Sorting of Object Properties](https://www.rfc-editor.org/rfc/rfc8785.html#name-sorting-of-object-propertie)
     ///
     /// TODO: cross-reference with spec: https://wiki.laptop.org/go/Canonical_JSON
     func testJSONCanonicalForm() throws {
@@ -227,6 +227,7 @@ final class CryptoTests: XCTestCase {
         let json = try ob.canonicalJSON
         var correctedJSON = json.replacingOccurrences(of: "1.0000000000000002e-27", with: "1e-27") // rounding
         correctedJSON = correctedJSON.replacingOccurrences(of: "333333333.33333331,", with: "333333333.3333333,") // rounding
+        correctedJSON = correctedJSON.replacingOccurrences(of: #""\/""#, with: #""/""#) // fixing bad backslash in quotes
 
         XCTAssertEqual(expectedResult, correctedJSON)
 
