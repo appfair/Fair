@@ -249,7 +249,7 @@ public struct SourceCommand : AsyncParsableCommand {
                 appTokens = [try await fetchADP()]
             }
 
-            var apps: [(appToken: String, appItem: AltCatalogAppItem)] = []
+            var apps: [(appToken: String, appItem: AltCatalog.App)] = []
             for appToken in appTokens {
                 let tokenParts = appToken.split(separator: "/")
 
@@ -290,7 +290,7 @@ public struct SourceCommand : AsyncParsableCommand {
             return catalog
         }
 
-        func createAltCatalogAppItem(token appToken: String, version releaseVersion: String?) async throws -> (appToken: String, appItem: AltCatalogAppItem) {
+        func createAltCatalogAppItem(token appToken: String, version releaseVersion: String?) async throws -> (appToken: String, appItem: AltCatalog.App) {
             let version = try await fetchLatestVersion(token: appToken, unless: releaseVersion)
             let dataSource = try await fetchSourceZip(token: appToken, version: version)
             let pathPrefix = (dataSource.paths.first?.pathName ?? "") + "/" // e.g.: "Tune-Out-1.0.2/"
@@ -371,24 +371,24 @@ public struct SourceCommand : AsyncParsableCommand {
             let minOSVersion: String? = nil // TODO: get from Info.plist
             let maxOSVersion: String? = nil // TODO: get from Info.plist
 
-            let appVersion = AltCatalogAppItemVersion(version: marketingVersion, buildVersion: projectVersion, date: releaseDate, localizedDescription: releaseNotes, downloadURL: manifestURL.absoluteString, size: maxAssetSize, assetURLs: assetURLs, minOSVersion: minOSVersion, maxOSVersion: maxOSVersion)
+            let appVersion = AltCatalog.App.Version(version: marketingVersion, buildVersion: projectVersion, date: releaseDate, localizedDescription: releaseNotes, downloadURL: manifestURL.absoluteString, size: maxAssetSize, assetURLs: assetURLs, minOSVersion: minOSVersion, maxOSVersion: maxOSVersion)
 
-            var appPermissions = AltCatalogAppItemPermissions()
+            var appPermissions = AltCatalog.App.Permission()
 
             let infoPlist = try Plist(data: dataSource.data(atPath: pathPrefix + "Darwin/Info.plist"))
-            var permissions: [AltCatalogAppItemPermissions.PermissionPrivacy] = []
+            var permissions: [AltCatalog.App.Permission.PermissionPrivacy] = []
             for (key, value) in infoPlist.rawValue {
                 guard let key = key as? String else { continue }
                 guard let value = value as? String else { continue }
                 guard key.hasSuffix("UsageDescription") else { continue }
-                permissions.append(AltCatalogAppItemPermissions.PermissionPrivacy(name: key, usageDescription: value))
+                permissions.append(AltCatalog.App.Permission.PermissionPrivacy(name: key, usageDescription: value))
             }
             if !permissions.isEmpty {
                 appPermissions.privacy = .init(permissions.sorting(by: \.name))
             }
 
             let entitlementsPlist = try Plist(data: dataSource.data(atPath: pathPrefix + "Darwin/Entitlements.plist"))
-            var entitlements: [AltCatalogAppItemPermissions.PermissionEntitlement] = []
+            var entitlements: [AltCatalog.App.Permission.PermissionEntitlement] = []
             for (key, _) in entitlementsPlist.rawValue {
                 if let key = key as? String {
                     entitlements.append(.init(name: key))
@@ -403,7 +403,7 @@ public struct SourceCommand : AsyncParsableCommand {
             // TODO: also parse the .xcconfig for INFOPLIST_KEY_LSApplicationCategoryType like "public.app-category.utilities"
             // TODO: fall back to names in fastlane primaryCategory
             let _ = primaryCategory
-            let category = AltStoreCategory.other
+            let category = "other"
 
             // the convention for the path of the app icon
             //let iconURL = rawContentURL.appending(path: "Darwin/Assets.xcassets/AppIcon.appiconset/AppIcon@3x.png")
@@ -420,9 +420,9 @@ public struct SourceCommand : AsyncParsableCommand {
                 .filter({ $0.hasPrefix("Darwin/fastlane/screenshots/en-US/") })
                 .map({ rawContentURL.appending(path: $0) })
 
-            let screenshots: AltCatalogAppItem.ScreenshotCollection = .init(["iphone": screenshotURLs.map({ .init($0.absoluteString) })])
+            let screenshots: AltCatalog.App.ScreenshotCollection = .init(["iphone": screenshotURLs.map({ .init($0.absoluteString) })])
 
-            let item = AltCatalogAppItem(name: localizedTitle ?? productName, bundleIdentifier: bundleIdentifier, marketplaceID: marketplaceID, developerName: sourceOptions.developerName, subtitle: subtitle, localizedDescription: localizedDescription, iconURL: iconURL?.absoluteString, tintColor: tintColor, category: category, screenshots: screenshots, versions: [appVersion], appPermissions: appPermissions, patreon: nil)
+            let item = AltCatalog.App(name: localizedTitle ?? productName, bundleIdentifier: bundleIdentifier, marketplaceID: marketplaceID, developerName: sourceOptions.developerName, subtitle: subtitle, localizedDescription: localizedDescription, iconURL: iconURL?.absoluteString, tintColor: tintColor, category: category, screenshots: screenshots, versions: [appVersion], appPermissions: appPermissions, patreon: nil)
             return (appToken, item)
         }
     }

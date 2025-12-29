@@ -20,6 +20,342 @@ public class FairExpoTests : XCTestCase {
         XCTAssertEqual("/icons/appfair-icon.png", index.catalogs.fdroid?.icon["en-US"]?.name)
         XCTAssertEqual("https://appfair.net/appfair-icon.png", index.catalogs.altstore?.iconURL)
     }
+    
+    /// Parses the given type from YAML.
+    ///
+    /// - Parameters:
+    ///   - verify: whether to verify the completeness of the type by checking the round-tripped fidelity
+    ///   - yaml: a closure creating the YAML to check
+    /// - Returns: the decoded type
+    func parseYAML<T: Codable>(verify: Bool = true, file: StaticString = #file, line: UInt = #line, _ yaml: () -> String) throws -> T {
+        let json = try YAML.parse(yaml().utf8Data).json()
+        let decoded = try T(json: json, options: JSONDecodingOptions(dateDecodingStrategy: .iso8601))
+        let decodedJSON = try decoded.json(options: JSONEncodingOptions(dateEncodingStrategy: .iso8601))
+        if verify {
+            try XCTAssertEqual(json.prettyJSON, decodedJSON.prettyJSON, "round-trip of encoded type \(T.self) failed", file: file, line: line)
+        }
+        return decoded
+    }
+
+    func parseJSON<T: Codable>(verify: Bool = true, file: StaticString = #file, line: UInt = #line, _ json: () -> String) throws -> T {
+        let json = try JSON.parse(json().utf8Data).json()
+        let decoded = try T(json: json, options: JSONDecodingOptions(dateDecodingStrategy: .iso8601))
+        let decodedJSON = try decoded.json(options: JSONEncodingOptions(dateEncodingStrategy: .iso8601))
+        if verify {
+            try XCTAssertEqual(json.prettyJSON, decodedJSON.prettyJSON, "round-trip of encoded type \(T.self) failed", file: file, line: line)
+        }
+        return decoded
+    }
+
+    func testAppcatConversion() async throws {
+        let appcat: Appcat = try parseYAML { """
+            appcat-version: 1.0
+            default-locales: ['en-US', 'fr-FR']
+            url: https://demo.appfair.net/appcat.json
+            tint: AABBCC
+            title:
+              en-US: "App Fair"
+              fr-FR: "Le App Fair"
+            description:
+              en-US: "A catalog of apps"
+              fr-FR: "Une cataloge de les apps"
+            icon:
+              en-US:
+                location: icons/appfair_icon.png
+                width: 512
+                height: 512
+                size: 123456
+                hash: sha256
+            apps:
+              - id: Tune-Out
+                created: 2023-01-01T12:00:00Z
+                # relative path to the assets for this app
+                location: apps/Tune-Out/
+                title:
+                  en-US: "Tune Out"
+                summary:
+                  en-US: "An internet radio player"
+                  fr-FR: "Une player de radio internet"
+                description:
+                  en-US: "An internet radio player…"
+                  fr-FR: "Une player de radio internet…"
+                keywords:
+                  en-US: ['key1', 'key2']
+                  fr-FR: ['cle1', 'cle2']
+                icon:
+                  en-US:
+                    location: icon.png
+                    width: 512
+                    height: 512
+                    size: 123456
+                    hash: sha256
+                platforms:
+                  ios:
+                    id: org.appfair.app.Tune-Out
+                    minVersion: '17.0'
+                    permissions:
+                      - key: 'NSContactsUsageDescription'
+                        reason:
+                          en-US: "This app needs to access contents"
+                      - key: 'com.apple.developer.contacts.notes'
+                        reason:
+                          en-US: "This app needs to access contacts (entitlement)"
+                    channels:
+                      direct:
+                        version: '1.1.2'
+                        date: 2026-01-01T12:00:00Z
+                        artifact:
+                          location: releases/download/1.1.2/TuneOut-release.ipa
+                          size: 123456
+                          hash: sha256
+                      appstore:
+                        identifier: '987654321'
+                        version: '1.1.1'
+                        date: 2025-12-01T12:00:00Z
+                        categories: ['Music', 'Entertainment']
+                        title:
+                          en-US: "Tune Out for iOS"
+                          fr-FR: "Le Tune Out for iOS"
+                        keywords:
+                          en-US: ['ios-key1', 'ios-key2']
+                          fr-FR: ['ios-cle1', 'ios-cle2']
+                      altstore:
+                        version: '1.1.2'
+                        date: 2026-01-01T12:00:00Z
+                        categories: ['entertainment']
+                        notes:
+                          en-US: "Bug fixes and performance improvements"
+                        artifact:
+                          location: releases/download/1.1.2/manifest.json
+                          size: 123456
+                          hash: sha256
+                    profiles:
+                      iphone:
+                        screenshots:
+                          - en-US:
+                              caption: "A screenshot"
+                              width: 800
+                              height: 600
+                              location: screens/screenshot_iphone1.png
+                              size: 123456
+                              hash: sha256
+                      ipad:
+                        screenshots:
+                          - fr-FR:
+                              caption: "Une screenshot"
+                              location: screens/screenshot_ipad1.png
+                              width: 800
+                              height: 1024
+                              size: 123456
+                              hash: sha256
+                      watch:
+                        screenshots:
+                          - fr-FR:
+                              caption: "Une screenshot Watch"
+                              location: screens/screenshot_watch1.png
+                              width: 400
+                              height: 400
+                              size: 123456
+                              hash: sha256
+                  android:
+                    id: org.appfair.app.Tune_Out
+                    minVersion: '28'
+                    targetVersion: '35'
+                    permissions:
+                      - key: android.permission.WRITE_EXTERNAL_STORAGE
+                        reason:
+                          en-US: 'This app needs to write to external storage'
+                    channels:
+                      direct:
+                        version: '1.1.2'
+                        build: 112
+                        date: 2026-01-01T12:00:00Z
+                        artifact:
+                          location: releases/download/1.1.2/TuneOut-release.apk
+                          size: 123456
+                          hash: sha256
+                      fdroid:
+                        version: '1.1.2'
+                        date: 2026-01-01T12:00:00Z
+                        description:
+                          ar: "هذا الوصف الخاص بتطبيق F-Droid"
+                          en-US: "This special F-Droid description for the app…"
+                          ja-JA: "このアプリの特別なF-Droid説明文…"
+                        artifact:
+                          location: releases/download/1.1.2/TuneOut-fdroid.apk
+                          size: 123456
+                          hash: sha256
+                      playstore:
+                        version: '1.1.1'
+                        date: 2025-12-01T12:00:00Z
+                        identifier: '987654321'
+                        description:
+                          en-US: "This special Play Store description for the app…"
+                    profiles:
+                      phone:
+                        screenshots:
+                          - en-US:
+                              location: screens/screenshot_android_phone1_en.png
+                              size: 123456
+                              hash: sha256
+                              caption: "A screenshot"
+                              width: 800
+                              height: 600
+                            fr-FR:
+                              location: screens/screenshot_android_phone1_fr.png
+                              size: 123456
+                              hash: sha256
+                              caption: "Une screenshot"
+                              width: 800
+                              height: 600
+                          - en-US:
+                              location: screens/screenshot_android_phone2_en.png
+                              size: 123456
+                              hash: sha256
+                              caption: "Another screenshot"
+                              width: 800
+                              height: 600
+                      tv:
+                        screenshots:
+                          - en-US:
+                              location: screens/screenshot_android_tv1.png
+                              width: 800
+                              height: 1024
+                              size: 123456
+                              hash: sha256
+
+            """ }
+
+        XCTAssertEqual("App Fair", appcat.title["en-US"])
+        XCTAssertEqual("Le App Fair", appcat.title["fr-FR"])
+
+        let app = try XCTUnwrap(appcat.apps.first)
+        XCTAssertEqual("Tune Out", app.title?["en-US"])
+        XCTAssertEqual(nil, app.title?["fr-FR"])
+
+        XCTAssertEqual("An internet radio player", app.summary?["en-US"])
+        XCTAssertEqual("Une player de radio internet", app.summary?["fr-FR"])
+
+        XCTAssertEqual(["android", "ios"], app.platforms.keys.sorted())
+        XCTAssertEqual(["altstore", "appstore", "direct"], app.platforms["ios"]?.channels.keys.sorted())
+        XCTAssertEqual(["ipad", "iphone", "watch"], app.platforms["ios"]?.profiles.keys.sorted())
+        XCTAssertEqual(["direct", "fdroid", "playstore"], app.platforms["android"]?.channels.keys.sorted())
+        XCTAssertEqual(["phone", "tv"], app.platforms["android"]?.profiles.keys.sorted())
+
+        // test conversion to AltStore source
+        let altstoreConverted = appcat.toAltstoreSource()
+        let altstore: AltCatalog = try parseJSON { """
+        {
+          "name" : "App Fair",
+          "description" : "A catalog of apps",
+          "iconURL" : "https://demo.appfair.net/icons/appfair_icon.png",
+          "tintColor" : "AABBCC",
+          "apps" : [
+            {
+              "bundleIdentifier" : "org.appfair.app.Tune-Out",
+              "name" : "Tune Out",
+              "category" : "entertainment",
+              "subtitle" : "An internet radio player",
+              "localizedSubtitles" : {
+                "en-US" : "An internet radio player",
+                "fr-FR" : "Une player de radio internet"
+              },
+              "localizedDescription" : "An internet radio player…",
+              "localizedDescriptions" : {
+                "en-US" : "An internet radio player…",
+                "fr-FR" : "Une player de radio internet…"
+              },
+              "iconURL" : "https://demo.appfair.net/apps/Tune-Out/icon.png",
+              "appPermissions" : {
+                "entitlements" : [
+                  {
+                      "name" : "com.apple.developer.contacts.notes"
+                  }
+                ],
+                "privacy" : [
+                  {
+                    "name" : "NSContactsUsageDescription",
+                    "usageDescription" : "This app needs to access contents"
+                  }
+                ]
+              },
+              "screenshots" : {
+                "iphone" : [
+                  {
+                    "imageURL" : "https://demo.appfair.net/apps/Tune-Out/screens/screenshot_iphone1.png",
+                    "height" : 600,
+                    "width" : 800
+                  }
+                ],
+                "ipad" : [
+                  {
+                    "imageURL" : "https://demo.appfair.net/apps/Tune-Out/screens/screenshot_ipad1.png",
+                    "height" : 1024,
+                    "width" : 800
+                  }
+                ],
+                "watch" : [
+                  {
+                    "imageURL" : "https://demo.appfair.net/apps/Tune-Out/screens/screenshot_watch1.png",
+                    "height" : 400,
+                    "width" : 400
+                  }
+                ]
+              },
+              "versions" : [
+                {
+                  "version" : "1.1.2",
+                  "date" : "2026-01-01T12:00:00Z",
+                  "downloadURL" : "https://demo.appfair.net/apps/Tune-Out/releases/download/1.1.2/manifest.json",
+                  "size" : 123456,
+                  "minOSVersion" : "17.0",
+                  "localizedDescription" : "Bug fixes and performance improvements",
+                  "localizedDescriptions" : {
+                    "en-US" : "Bug fixes and performance improvements"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+        """ }
+
+        try XCTAssertEqual(altstoreConverted.prettyJSON, altstore.prettyJSON)
+
+
+//        // test conversion to F-Droid index
+//        let fdroidConverted = appcat.toFDroidIndex()
+//        let fdroid: FDroidIndex = try parseYAML { """
+//        repo:
+//          name:
+//            en_US: 'The App Fair'
+//          icon:
+//            en-US:
+//              name: /icons/icon.png
+//              sha256: 6df1e5ee7b0b1ce510c73754f3eac62219f86c0825eb3ee4da60377d6a02c93e
+//              size: 49803
+//          timestamp: 1754831284000
+//          address: "https://f-droid.org/repo"
+//
+//        packages:
+//          'org.appfair.app.Tune_Out':
+//            metadata:
+//              added: 1443830400000
+//              lastUpdated: 1753701461000
+//            versions:
+//              '1.2.3':
+//                added: 1753701461000
+//                file:
+//                  name: "/org.fdroid.fdroid_1023051.apk"
+//                  sha256: "1dfce4269081693f10350dbabd26991a59d7c2bb81f870de54e5b113f4785b7a"
+//                  size: 12426276
+//                manifest:
+//                  versionName: '1.2.3'
+//                  versionCode: 12345
+//
+//        """ }
+//        try XCTAssertEqual(fdroidConverted.prettyJSON, fdroid.prettyJSON)
+    }
 
     func testParseCatalogs() throws {
         // list obtained from https://cdn.altstore.io/file/altstore/altstore/marketplace-sources.json

@@ -22,7 +22,7 @@ public struct FDroidEndpoint {
 /// [https://gitlab.com/fdroid/fdroidclient/-/tree/master/libs/index/src/commonMain/kotlin/org/fdroid/index/v2]()
 ///
 /// Python generation code at: [https://gitlab.com/fdroid/fdroidserver/-/blob/master/fdroidserver/index.py#L516]()
-public struct FDroidIndex : Codable, Equatable {
+public struct FDroidIndex: Codable, Equatable {
     /// Metadata about the repository
     public var repo: Repo
 
@@ -57,7 +57,7 @@ public struct FDroidIndex : Codable, Equatable {
     }
 
     /// A reference to a resource path
-    public struct File : Codable, Equatable {
+    public struct File: Codable, Equatable {
         public var name: String
         public var sha256: String?
         public var size: Int64?
@@ -69,7 +69,7 @@ public struct FDroidIndex : Codable, Equatable {
         }
     }
 
-    public struct Entry : Codable, Equatable {
+    public struct Entry: Codable, Equatable {
         public var timestamp: Int64
         public var version: Int64
         public var maxAge: Int?
@@ -85,7 +85,7 @@ public struct FDroidIndex : Codable, Equatable {
         }
     }
 
-    public struct EntryFile : Codable, Equatable {
+    public struct EntryFile: Codable, Equatable {
         public var name: String
         public var sha256: String
         public var size: Int64
@@ -100,7 +100,7 @@ public struct FDroidIndex : Codable, Equatable {
     }
 
     /// Metadata about the package repository
-    public struct Repo : Codable, Equatable {
+    public struct Repo: Codable, Equatable {
         public var name: LocalizedText
         public var icon: LocalizedFile
         public var address: String
@@ -127,7 +127,7 @@ public struct FDroidIndex : Codable, Equatable {
         }
     }
 
-    public struct Mirror : Codable, Equatable {
+    public struct Mirror: Codable, Equatable {
         public var url: String
         public var countryCode: String?
         public var isPrimary: Bool? // undocumented
@@ -141,7 +141,7 @@ public struct FDroidIndex : Codable, Equatable {
 
 
     /// Flag for potentially undesirable features (e.g., "Ads", "DisabledAlgorithm", "KnownVuln", "NSFW", "NoSourceSince", "NonFreeAdd", "NonFreeAssets", "NonFreeDep", "NonFreeNet", "Tracking", "UpstreamNonFree")
-    public struct AntiFeature : Codable, Equatable {
+    public struct AntiFeature: Codable, Equatable {
         public var icon: LocalizedFile?
         public var name: LocalizedText?
         public var description: LocalizedText?
@@ -156,7 +156,7 @@ public struct FDroidIndex : Codable, Equatable {
     /// A categorization of an app (e.g, "Connectivity", "Development", "Games", "Graphics", "Internet", "Money", "Multimedia", "Navigation", "Phone & SMS", "Reading", "Science & Education", "Security", "Sports & Health", "System", "Theming", "Time", "Writing")
     ///
     /// e.g., see the list at https://gitlab.com/fdroid/fdroiddata/-/blob/master/config/categories.yml
-    public struct Category : Codable, Equatable {
+    public struct Category: Codable, Equatable {
         public var icon: LocalizedFile?
         public var name: LocalizedText?
         public var description: LocalizedText?
@@ -168,7 +168,7 @@ public struct FDroidIndex : Codable, Equatable {
         }
     }
 
-    public struct ReleaseChannel : Codable, Equatable {
+    public struct ReleaseChannel: Codable, Equatable {
         public var name: LocalizedText
         public var description: LocalizedText?
 
@@ -178,7 +178,7 @@ public struct FDroidIndex : Codable, Equatable {
         }
     }
 
-    public struct Package : Codable, Equatable {
+    public struct Package: Codable, Equatable {
         public var metadata: Metadata
         /// A of versions, keyed by the sha256 of the primary artifact.
         public var versions: Dictionary<String, PackageVersion>
@@ -188,24 +188,31 @@ public struct FDroidIndex : Codable, Equatable {
             self.versions = versions
         }
 
-        public struct Metadata : Codable, Equatable {
+        public struct Metadata: Codable, Equatable {
             public var name: LocalizedText?
             public var summary: LocalizedText?
             public var description: LocalizedText?
+            public var categories: Array<String>?
+
             public var added: Int64
             public var lastUpdated: Int64
-            public var webSite: String?
             public var changelog: String?
+
             public var license: String?
             public var sourceCode: String?
+            public var preferredSigner: String?
+
+            public var webSite: String?
             public var issueTracker: String?
             public var translation: String?
-            public var preferredSigner: String?
-            public var categories: Array<String>?
+
+            // MARK: Author
             public var authorName: String?
             public var authorEmail: String?
             public var authorWebSite: String?
             public var authorPhone: String?
+
+            // MARK: Funding
             public var donate: Array<String>?
             public var liberapayID: String?
             public var liberapay: String?
@@ -213,6 +220,8 @@ public struct FDroidIndex : Codable, Equatable {
             public var bitcoin: String?
             public var litecoin: String?
             public var flattrID: String?
+
+            // MARK: Graphics
             public var icon: LocalizedFile?
             public var featureGraphic: LocalizedFile?
             public var promoGraphic: LocalizedFile?
@@ -254,21 +263,23 @@ public struct FDroidIndex : Codable, Equatable {
             }
         }
 
-        public struct Screenshots : Codable, Equatable {
-            public var phone: LocalizedFileList?
-            public var sevenInch: LocalizedFileList?
-            public var tenInch: LocalizedFileList?
-            public var wear: LocalizedFileList?
-            public var tv: LocalizedFileList?
+        public typealias Screenshots = [String: LocalizedFileList]
 
-            public init(phone: LocalizedFileList? = nil, sevenInch: LocalizedFileList? = nil, tenInch: LocalizedFileList? = nil, wear: LocalizedFileList? = nil, tv: LocalizedFileList? = nil) {
-                self.phone = phone
-                self.sevenInch = sevenInch
-                self.tenInch = tenInch
-                self.wear = wear
-                self.tv = tv
-            }
-        }
+        //public struct Screenshots: Codable, Equatable {
+        //    public var phone: LocalizedFileList?
+        //    public var sevenInch: LocalizedFileList?
+        //    public var tenInch: LocalizedFileList?
+        //    public var wear: LocalizedFileList?
+        //    public var tv: LocalizedFileList?
+        //
+        //    public init(phone: LocalizedFileList? = nil, sevenInch: LocalizedFileList? = nil, tenInch: LocalizedFileList? = nil, wear: LocalizedFileList? = nil, tv: LocalizedFileList? = nil) {
+        //        self.phone = phone
+        //        self.sevenInch = sevenInch
+        //        self.tenInch = tenInch
+        //        self.wear = wear
+        //        self.tv = tv
+        //    }
+        //}
 
         // public interface PackageVersion {
         //     public val versionCode: Long
@@ -278,7 +289,7 @@ public struct FDroidIndex : Codable, Equatable {
         //     public val hasKnownVulnerability: Boolean
         // }
 
-        public struct PackageVersion : Codable, Equatable {
+        public struct PackageVersion: Codable, Equatable {
             public var added: Int64
             public var file: FileV1
             public var src: File?
@@ -298,7 +309,7 @@ public struct FDroidIndex : Codable, Equatable {
             }
         }
 
-        public struct FileV1 : Codable, Equatable {
+        public struct FileV1: Codable, Equatable {
             public var name: String
             public var sha256: String
             public var size: Int64?
@@ -317,7 +328,7 @@ public struct FDroidIndex : Codable, Equatable {
         //     public val nativecode: List<String>?
         // }
 
-        public struct Manifest : Codable, Equatable {
+        public struct Manifest: Codable, Equatable {
             public var versionName: String
             public var versionCode: Int64
             public var usesSdk: UsesSdk?
@@ -341,7 +352,7 @@ public struct FDroidIndex : Codable, Equatable {
             }
         }
 
-        public struct UsesSdk : Codable, Equatable {
+        public struct UsesSdk: Codable, Equatable {
             public var minSdkVersion: Int
             public var targetSdkVersion: Int
 
@@ -351,7 +362,7 @@ public struct FDroidIndex : Codable, Equatable {
             }
         }
 
-        public struct Signer : Codable, Equatable {
+        public struct Signer: Codable, Equatable {
             public var sha256: Array<String>
             public var hasMultipleSigners: Bool?
 
@@ -361,7 +372,7 @@ public struct FDroidIndex : Codable, Equatable {
             }
         }
 
-        public struct Permission : Codable, Equatable {
+        public struct Permission: Codable, Equatable {
             public var name: String
             public var maxSdkVersion: Int?
 
@@ -371,7 +382,7 @@ public struct FDroidIndex : Codable, Equatable {
             }
         }
 
-        public struct Feature : Codable, Equatable {
+        public struct Feature: Codable, Equatable {
             public var name: String
 
             public init(name: String) {

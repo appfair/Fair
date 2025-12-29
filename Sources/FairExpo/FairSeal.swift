@@ -27,7 +27,7 @@ public struct FairSeal : Codable, JSONSignable {
     public internal(set) var generatorVersion: AppVersion?
 
     /// The AppSource metadata from `App.yml` and `Info.plist`
-    public var appSource: AltCatalogAppItem?
+    public var appSource: AltCatalog.App?
     /// The sealed assets
     public var assets: [Asset]?
     /// The size of the artifact's executable binary
@@ -61,7 +61,7 @@ public struct FairSeal : Codable, JSONSignable {
         set { signature = newValue }
     }
 
-    public init(metadata: JSON?, assets: [Asset]? = nil, permissions: [AppPermission]? = nil, appSource: AltCatalogAppItem? = nil, coreSize: Int? = nil, tint: String? = nil) {
+    public init(metadata: JSON?, assets: [Asset]? = nil, permissions: [AppPermission]? = nil, appSource: AltCatalog.App? = nil, coreSize: Int? = nil, tint: String? = nil) {
         self.metadata = metadata
         self.generatorVersion = Bundle.fairCoreVersion
         //self.fairsealVersion = Version.allCases.last!
@@ -76,17 +76,6 @@ public struct FairSeal : Codable, JSONSignable {
     /// The app org associated with this seal; this will be the first component of the first URL's path
     public var appOrg: String? {
         assets?.first?.url.path.split(separator: "/").first?.description
-    }
-}
-
-extension FairSeal {
-    /// Tries to parse the "app" property of the metadata as a `AppMetadata`
-    func parseAppMetaData() throws -> AppMetadata? {
-        guard let app = self.metadata?["app"]?.object else {
-            return nil
-        }
-
-        return try AppMetadata(json: app.json())
     }
 }
 

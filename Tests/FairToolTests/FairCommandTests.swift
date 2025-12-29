@@ -239,7 +239,7 @@ final class FairCommandTests: XCTestCase {
         let tuneOut = try XCTUnwrap(output.apps.dropFirst(0).first, "catalog should have contained at least one app")
         XCTAssertEqual("Tune-Out", tuneOut.name)
         XCTAssertEqual("org.appfair.app.Tune-Out", tuneOut.bundleIdentifier)
-        XCTAssertEqual("other", tuneOut.category?.rawValue) // FIXME
+        XCTAssertEqual("other", tuneOut.category) // FIXME
         XCTAssertEqual("1639901758", tuneOut.marketplaceID)
         XCTAssertEqual("Stream internet radio", tuneOut.subtitle)
         XCTAssertEqual(1, tuneOut.versions?.count)
@@ -248,7 +248,7 @@ final class FairCommandTests: XCTestCase {
         let netSkip = try XCTUnwrap(output.apps.dropFirst(1).first, "catalog should have contained a second app")
         XCTAssertEqual("Net Skip", netSkip.name)
         XCTAssertEqual("org.appfair.app.Net-Skip", netSkip.bundleIdentifier)
-        XCTAssertEqual("other", netSkip.category?.rawValue) // FIXME
+        XCTAssertEqual("other", netSkip.category) // FIXME
         XCTAssertEqual("1640618584", netSkip.marketplaceID)
         XCTAssertEqual("A humane web browser", netSkip.subtitle)
         XCTAssertEqual(1, netSkip.versions?.count)
@@ -257,7 +257,7 @@ final class FairCommandTests: XCTestCase {
         let skipNotes = try XCTUnwrap(output.apps.dropFirst(2).first, "catalog should have contained a third app")
         XCTAssertEqual("Skip Notes", skipNotes.name)
         XCTAssertEqual("org.appfair.app.SkipNotes", skipNotes.bundleIdentifier)
-        XCTAssertEqual("other", skipNotes.category?.rawValue) // FIXME
+        XCTAssertEqual("other", skipNotes.category) // FIXME
         XCTAssertEqual("6740916318", skipNotes.marketplaceID)
         XCTAssertEqual("Simple and secure notes", skipNotes.subtitle)
         XCTAssertEqual(1, skipNotes.versions?.count)
@@ -568,7 +568,7 @@ final class FairCommandTests: XCTestCase {
 
     func testFairMetadataCommand() async throws {
 
-        @discardableResult func check(_ yaml: String, customize: (inout FairCommand.MetadataCommand) -> () = { _ in }) async throws -> (folder: URL, metadata: [AppMetadata]) {
+        @discardableResult func check(_ yaml: String, customize: (inout FairCommand.MetadataCommand) -> () = { _ in }) async throws -> (folder: URL, metadata: [FastlaneAppStoreMetadata]) {
             let folder = URL(fileURLWithPath: UUID().uuidString, isDirectory: true, relativeTo: URL.tmpdir)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
 
@@ -584,7 +584,7 @@ final class FairCommandTests: XCTestCase {
 
             customize(&cmd)
 
-            var results: [AppMetadata] = []
+            var results: [FastlaneAppStoreMetadata] = []
             for try await result in cmd.executeCommand() {
                 results.append(result)
             }

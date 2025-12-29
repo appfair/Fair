@@ -335,7 +335,7 @@ extension AppFundingLink {
     }
 }
 
-//public extension AltCatalogAppItem {
+//public extension AltCatalog.App {
 //
 //    /// The hyphenated form of this app's name
 //    var appNameHyphenated: String {

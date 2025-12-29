@@ -276,7 +276,7 @@ final class GitHubEndpointServiceTests: XCTestCase {
         seal.permissions = []
         XCTAssertEqual("bJwxJc1P3ebSID2jztUZ/6BKnmrl6eE4uU8wGbsS5dw=", try sig(), "signature on empty array should differ from null")
 
-//        seal.appSource = AltCatalogAppItem(name: "App Name", bundleIdentifier: "app.appName", downloadURL: URL(string: "about:blank")!)
+//        seal.appSource = AltCatalog.App(name: "App Name", bundleIdentifier: "app.appName", downloadURL: URL(string: "about:blank")!)
 //        XCTAssertEqual("+arE45SfHJamOXtDvrT3lwB4tcSOogebqbJl2X0/d6Y=", try sig(), "seal with catalog information should be consistent")
 
     }

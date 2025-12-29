@@ -6,7 +6,7 @@ import ArgumentParser
 extension FairCommand {
 
     public struct MetadataCommand: FairStructuredCommand {
-        public typealias Output = AppMetadata
+        public typealias Output = FastlaneAppStoreMetadata
         public static let experimental = false
         public static var configuration = CommandConfiguration(commandName: "metadata",
                                                                abstract: "Output metadata for the given app.",
@@ -48,7 +48,7 @@ extension FairCommand {
         }
 
         /// The maximum permitted value of the given metadata key.
-        func maximumValueLength(for key: AppMetadata.CodingKeys) -> Int? {
+        func maximumValueLength(for key: FastlaneAppStoreMetadata.CodingKeys) -> Int? {
             switch key {
             case .name: return 30
             case .subtitle: return 30
@@ -58,7 +58,7 @@ extension FairCommand {
             }
         }
 
-        public func executeCommand() -> AsyncThrowingStream<AppMetadata, Error> {
+        public func executeCommand() -> AsyncThrowingStream<FastlaneAppStoreMetadata, Error> {
             warnExperimental(Self.experimental)
 
             let keyValues = { (vk: [String]) in
@@ -82,13 +82,13 @@ extension FairCommand {
                 }
 
                 // attempt to re-parse the specified key's JSON-ized value as AppMetadata
-                let appMeta = try AppMetadata(json: appJSON.json())
+                let appMeta = try FastlaneAppStoreMetadata(json: appJSON.json())
 
                 if let export = export {
                     let exportURL = URL(fileURLWithPath: export, isDirectory: true)
 
-                    func saveMetadata(locale: String?, meta: AppMetadata) throws {
-                        func save(_ value: String?, review: Bool = false, _ key: AppMetadata.CodingKeys) throws {
+                    func saveMetadata(locale: String?, meta: FastlaneAppStoreMetadata) throws {
+                        func save(_ value: String?, review: Bool = false, _ key: FastlaneAppStoreMetadata.CodingKeys) throws {
                             if locale != nil && review == true {
                                 // review properties are not localized
                                 return
@@ -134,7 +134,7 @@ extension FairCommand {
                             try value.write(to: file, atomically: false, encoding: .utf8)
                         }
 
-                        for key in AppMetadata.CodingKeys.allCases {
+                        for key in FastlaneAppStoreMetadata.CodingKeys.allCases {
                             switch key {
                             case .copyright: try save(meta.copyright, .copyright)
                             case .primary_category: try save(meta.primary_category, .primary_category)

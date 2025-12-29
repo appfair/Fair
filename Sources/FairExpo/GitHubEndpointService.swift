@@ -431,7 +431,7 @@ extension GitHubEndpointService {
     }
 }
 
-extension AltCatalogAppItem {
+extension AltCatalog.App {
     /// The list of folders (with optional tilde) for deleting the app with the given bundle ID.
     ///
     /// The files and folders may not exist, but these are the potential locations that will be removed.
@@ -459,7 +459,7 @@ extension AltCatalogAppItem {
     }
 }
 
-extension AltCatalogAppItem {
+extension AltCatalog.App {
     /// Ingest the given catalog JSON by parsing it and including all the non-optional properties into this catalog item.
     internal mutating func ingest(json: String, fence: String = "```", prefix: String? = "json") throws -> Bool {
         var json = json.trimmed()
@@ -479,8 +479,8 @@ extension AltCatalogAppItem {
         jobj["bundleIdentifier"] = self.bundleIdentifier?.parameterValue
 //        jobj["downloadURL"] = self.downloadURL?.absoluteString.parameterValue
 
-        // FIXME: this is slow because we are converting the Plist to JSON and then parsing it back into an AltCatalogAppItem
-        let appItem = try AltCatalogAppItem(json: jobj.json())
+        // FIXME: this is slow because we are converting the Plist to JSON and then parsing it back into an AltCatalog.App
+        let appItem = try AltCatalog.App(json: jobj.json())
         self = appItem
         return true
     }
@@ -499,10 +499,10 @@ fileprivate extension Dictionary {
     }
 }
 
-extension AltCatalogAppItem {
+extension AltCatalog.App {
     public struct Diff {
-        public let new: AltCatalogAppItem
-        public let old: AltCatalogAppItem?
+        public let new: AltCatalog.App
+        public let old: AltCatalog.App?
     }
 }
 
