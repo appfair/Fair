@@ -1,3 +1,6 @@
+// Copyright (c) 2022 - 2026 The App Fair Project <info@appfair.org>
+// Licensed under the GNU Affero General Public License v3.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import Foundation
 import FairCore
 
@@ -14,14 +17,14 @@ public struct FDroidEndpoint {
     }
 }
 
-/// Version 2 of the F-Droid index format.
-///
-/// Sample catalog at: [https://f-droid.org/repo/index-v2.json](https://f-droid.org/repo/index-v2.json)
+/// Version 2 of the F-Droid index format, described at https://gitlab.com/fdroid/wiki/-/wikis/Index-V2
 ///
 /// Based on the Kotlin data classes at:
 /// [https://gitlab.com/fdroid/fdroidclient/-/tree/master/libs/index/src/commonMain/kotlin/org/fdroid/index/v2]()
 ///
 /// Python generation code at: [https://gitlab.com/fdroid/fdroidserver/-/blob/master/fdroidserver/index.py#L516]()
+///
+/// Sample catalog at: [https://f-droid.org/repo/index-v2.json](https://f-droid.org/repo/index-v2.json)
 public struct FDroidIndex: Codable, Equatable {
     /// Metadata about the repository
     public var repo: Repo
@@ -61,41 +64,13 @@ public struct FDroidIndex: Codable, Equatable {
         public var name: String
         public var sha256: String?
         public var size: Int64?
+        public var ipfsCIDv1: String?
 
-        public init(name: String, sha256: String? = nil, size: Int64? = nil) {
+        public init(name: String, sha256: String? = nil, size: Int64? = nil, ipfsCIDv1: String? = nil) {
             self.name = name
             self.sha256 = sha256
             self.size = size
-        }
-    }
-
-    public struct Entry: Codable, Equatable {
-        public var timestamp: Int64
-        public var version: Int64
-        public var maxAge: Int?
-        public var index: EntryFile
-        public var diffs: Dictionary<String, EntryFile>
-
-        public init(timestamp: Int64, version: Int64, maxAge: Int? = nil, index: EntryFile, diffs: Dictionary<String, EntryFile>) {
-            self.timestamp = timestamp
-            self.version = version
-            self.maxAge = maxAge
-            self.index = index
-            self.diffs = diffs
-        }
-    }
-
-    public struct EntryFile: Codable, Equatable {
-        public var name: String
-        public var sha256: String
-        public var size: Int64
-        public var numPackages: Int
-
-        public init(name: String, sha256: String, size: Int64, numPackages: Int) {
-            self.name = name
-            self.sha256 = sha256
-            self.size = size
-            self.numPackages = numPackages
+            self.ipfsCIDv1 = ipfsCIDv1
         }
     }
 
@@ -265,40 +240,16 @@ public struct FDroidIndex: Codable, Equatable {
 
         public typealias Screenshots = [String: LocalizedFileList]
 
-        //public struct Screenshots: Codable, Equatable {
-        //    public var phone: LocalizedFileList?
-        //    public var sevenInch: LocalizedFileList?
-        //    public var tenInch: LocalizedFileList?
-        //    public var wear: LocalizedFileList?
-        //    public var tv: LocalizedFileList?
-        //
-        //    public init(phone: LocalizedFileList? = nil, sevenInch: LocalizedFileList? = nil, tenInch: LocalizedFileList? = nil, wear: LocalizedFileList? = nil, tv: LocalizedFileList? = nil) {
-        //        self.phone = phone
-        //        self.sevenInch = sevenInch
-        //        self.tenInch = tenInch
-        //        self.wear = wear
-        //        self.tv = tv
-        //    }
-        //}
-
-        // public interface PackageVersion {
-        //     public val versionCode: Long
-        //     public val signer: Signer?
-        //     public val releaseChannels: List<String>?
-        //     public val packageManifest: PackageManifest
-        //     public val hasKnownVulnerability: Boolean
-        // }
-
         public struct PackageVersion: Codable, Equatable {
             public var added: Int64
-            public var file: FileV1
+            public var file: File
             public var src: File?
             public var manifest: Manifest
             public var releaseChannels: Array<String>?
             public var antiFeatures: Dictionary<String, LocalizedText>?
             public var whatsNew: LocalizedText?
 
-            public init(added: Int64, file: FileV1, src: File? = nil, manifest: Manifest, releaseChannels: Array<String>? = nil, antiFeatures: Dictionary<String, LocalizedText>? = nil, whatsNew: LocalizedText? = nil) {
+            public init(added: Int64, file: File, src: File? = nil, manifest: Manifest, releaseChannels: Array<String>? = nil, antiFeatures: Dictionary<String, LocalizedText>? = nil, whatsNew: LocalizedText? = nil) {
                 self.added = added
                 self.file = file
                 self.src = src
@@ -308,25 +259,6 @@ public struct FDroidIndex: Codable, Equatable {
                 self.whatsNew = whatsNew
             }
         }
-
-        public struct FileV1: Codable, Equatable {
-            public var name: String
-            public var sha256: String
-            public var size: Int64?
-
-            public init(name: String, sha256: String, size: Int64? = nil) {
-                self.name = name
-                self.sha256 = sha256
-                self.size = size
-            }
-        }
-
-        // public interface PackageManifest {
-        //     public val minSdkVersion: Int?
-        //     public val maxSdkVersion: Int?
-        //     public val featureNames: List<String>?
-        //     public val nativecode: List<String>?
-        // }
 
         public struct Manifest: Codable, Equatable {
             public var versionName: String

@@ -1,3 +1,6 @@
+// Copyright (c) 2022 - 2026 The App Fair Project <info@appfair.org>
+// Licensed under the GNU Affero General Public License v3.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import Foundation
 import FairCore
 import FairExpo
@@ -138,7 +141,7 @@ public struct SourceCommand : AsyncParsableCommand {
             //let packageName = try env(key: "ANDROID_PACKAGE_NAME")
 
 
-            let file = FDroidIndex.Package.FileV1(name: "", sha256: "", size: 0)
+            let file = FDroidIndex.File(name: "", sha256: "", size: 0)
             let manifest = FDroidIndex.Package.Manifest(versionName: "", versionCode: 0)
             let packageVersion = FDroidIndex.Package.PackageVersion(added: 0, file: file, manifest: manifest)
 

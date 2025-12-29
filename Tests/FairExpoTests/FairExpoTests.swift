@@ -1,3 +1,6 @@
+// Copyright (c) 2022 - 2026 The App Fair Project <info@appfair.org>
+// Licensed under the GNU Affero General Public License v3.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import Swift
 import XCTest
 import FairCore
@@ -21,34 +24,35 @@ public class FairExpoTests : XCTestCase {
         XCTAssertEqual("https://appfair.net/appfair-icon.png", index.catalogs.altstore?.iconURL)
     }
     
-    /// Parses the given type from YAML.
+    /// Parses the given type from YAML or JSON.
     ///
     /// - Parameters:
     ///   - verify: whether to verify the completeness of the type by checking the round-tripped fidelity
     ///   - yaml: a closure creating the YAML to check
     /// - Returns: the decoded type
-    func parseYAML<T: Codable>(verify: Bool = true, file: StaticString = #file, line: UInt = #line, _ yaml: () -> String) throws -> T {
-        let json = try YAML.parse(yaml().utf8Data).json()
+    func deserialize<T: Codable>(_ type: ParseType, verify: Bool = true, file: StaticString = #file, line: UInt = #line, _ contents: () throws -> String) throws -> T {
+        let data = try contents().utf8Data
+        let json: JSON
+        switch type {
+        case .yaml: json = try YAML.parse(data).json()
+        case .json: json = try JSON.parse(data)
+        }
         let decoded = try T(json: json, options: JSONDecodingOptions(dateDecodingStrategy: .iso8601))
         let decodedJSON = try decoded.json(options: JSONEncodingOptions(dateEncodingStrategy: .iso8601))
         if verify {
-            try XCTAssertEqual(json.prettyJSON, decodedJSON.prettyJSON, "round-trip of encoded type \(T.self) failed", file: file, line: line)
+            if json != decodedJSON {
+                try XCTAssertEqual(json.prettyJSON, decodedJSON.prettyJSON, "round-trip of encoded type \(T.self) failed", file: file, line: line)
+            }
         }
         return decoded
     }
 
-    func parseJSON<T: Codable>(verify: Bool = true, file: StaticString = #file, line: UInt = #line, _ json: () -> String) throws -> T {
-        let json = try JSON.parse(json().utf8Data).json()
-        let decoded = try T(json: json, options: JSONDecodingOptions(dateDecodingStrategy: .iso8601))
-        let decodedJSON = try decoded.json(options: JSONEncodingOptions(dateEncodingStrategy: .iso8601))
-        if verify {
-            try XCTAssertEqual(json.prettyJSON, decodedJSON.prettyJSON, "round-trip of encoded type \(T.self) failed", file: file, line: line)
-        }
-        return decoded
+    enum ParseType {
+        case yaml, json
     }
 
     func testAppcatConversion() async throws {
-        let appcat: Appcat = try parseYAML { """
+        let appcat: Appcat = try deserialize(.yaml) { """
             appcat-version: 1.0
             default-locales: ['en-US', 'fr-FR']
             url: https://demo.appfair.net/appcat.json
@@ -65,10 +69,13 @@ public class FairExpoTests : XCTestCase {
                 width: 512
                 height: 512
                 size: 123456
-                hash: sha256
+                hash: SHA256
             apps:
               - id: Tune-Out
                 created: 2023-01-01T12:00:00Z
+                homepage: "https://tune-out.app"
+                email: "support@tune-out.app"
+                issues: "https://github.com/Tune-Out/Tune-Out/issues"
                 # relative path to the assets for this app
                 location: apps/Tune-Out/
                 title:
@@ -88,7 +95,7 @@ public class FairExpoTests : XCTestCase {
                     width: 512
                     height: 512
                     size: 123456
-                    hash: sha256
+                    hash: SHA256
                 platforms:
                   ios:
                     id: org.appfair.app.Tune-Out
@@ -107,7 +114,7 @@ public class FairExpoTests : XCTestCase {
                         artifact:
                           location: releases/download/1.1.2/TuneOut-release.ipa
                           size: 123456
-                          hash: sha256
+                          hash: SHA256
                       appstore:
                         identifier: '987654321'
                         version: '1.1.1'
@@ -128,7 +135,7 @@ public class FairExpoTests : XCTestCase {
                         artifact:
                           location: releases/download/1.1.2/manifest.json
                           size: 123456
-                          hash: sha256
+                          hash: SHA256
                     profiles:
                       iphone:
                         screenshots:
@@ -138,7 +145,7 @@ public class FairExpoTests : XCTestCase {
                               height: 600
                               location: screens/screenshot_iphone1.png
                               size: 123456
-                              hash: sha256
+                              hash: SHA256
                       ipad:
                         screenshots:
                           - fr-FR:
@@ -147,7 +154,7 @@ public class FairExpoTests : XCTestCase {
                               width: 800
                               height: 1024
                               size: 123456
-                              hash: sha256
+                              hash: SHA256
                       watch:
                         screenshots:
                           - fr-FR:
@@ -156,7 +163,7 @@ public class FairExpoTests : XCTestCase {
                               width: 400
                               height: 400
                               size: 123456
-                              hash: sha256
+                              hash: SHA256
                   android:
                     id: org.appfair.app.Tune_Out
                     minVersion: '28'
@@ -173,7 +180,7 @@ public class FairExpoTests : XCTestCase {
                         artifact:
                           location: releases/download/1.1.2/TuneOut-release.apk
                           size: 123456
-                          hash: sha256
+                          hash: SHA256
                       fdroid:
                         version: '1.1.2'
                         date: 2026-01-01T12:00:00Z
@@ -181,10 +188,12 @@ public class FairExpoTests : XCTestCase {
                           ar: "هذا الوصف الخاص بتطبيق F-Droid"
                           en-US: "This special F-Droid description for the app…"
                           ja-JA: "このアプリの特別なF-Droid説明文…"
+                        metadata:
+                          license: GPLv3
                         artifact:
                           location: releases/download/1.1.2/TuneOut-fdroid.apk
                           size: 123456
-                          hash: sha256
+                          hash: SHA256
                       playstore:
                         version: '1.1.1'
                         date: 2025-12-01T12:00:00Z
@@ -197,21 +206,21 @@ public class FairExpoTests : XCTestCase {
                           - en-US:
                               location: screens/screenshot_android_phone1_en.png
                               size: 123456
-                              hash: sha256
+                              hash: SHA256
                               caption: "A screenshot"
                               width: 800
                               height: 600
                             fr-FR:
                               location: screens/screenshot_android_phone1_fr.png
                               size: 123456
-                              hash: sha256
+                              hash: SHA256
                               caption: "Une screenshot"
                               width: 800
                               height: 600
                           - en-US:
                               location: screens/screenshot_android_phone2_en.png
                               size: 123456
-                              hash: sha256
+                              hash: SHA256
                               caption: "Another screenshot"
                               width: 800
                               height: 600
@@ -222,7 +231,7 @@ public class FairExpoTests : XCTestCase {
                               width: 800
                               height: 1024
                               size: 123456
-                              hash: sha256
+                              hash: SHA256
 
             """ }
 
@@ -244,7 +253,7 @@ public class FairExpoTests : XCTestCase {
 
         // test conversion to AltStore source
         let altstoreConverted = appcat.toAltstoreSource()
-        let altstore: AltCatalog = try parseJSON { """
+        let altstore: AltCatalog = try deserialize(.json) { """
         {
           "name" : "App Fair",
           "description" : "A catalog of apps",
@@ -323,46 +332,117 @@ public class FairExpoTests : XCTestCase {
         try XCTAssertEqual(altstoreConverted.prettyJSON, altstore.prettyJSON)
 
 
-//        // test conversion to F-Droid index
-//        let fdroidConverted = appcat.toFDroidIndex()
-//        let fdroid: FDroidIndex = try parseYAML { """
-//        repo:
-//          name:
-//            en_US: 'The App Fair'
-//          icon:
-//            en-US:
-//              name: /icons/icon.png
-//              sha256: 6df1e5ee7b0b1ce510c73754f3eac62219f86c0825eb3ee4da60377d6a02c93e
-//              size: 49803
-//          timestamp: 1754831284000
-//          address: "https://f-droid.org/repo"
-//
-//        packages:
-//          'org.appfair.app.Tune_Out':
-//            metadata:
-//              added: 1443830400000
-//              lastUpdated: 1753701461000
-//            versions:
-//              '1.2.3':
-//                added: 1753701461000
-//                file:
-//                  name: "/org.fdroid.fdroid_1023051.apk"
-//                  sha256: "1dfce4269081693f10350dbabd26991a59d7c2bb81f870de54e5b113f4785b7a"
-//                  size: 12426276
-//                manifest:
-//                  versionName: '1.2.3'
-//                  versionCode: 12345
-//
-//        """ }
-//        try XCTAssertEqual(fdroidConverted.prettyJSON, fdroid.prettyJSON)
+        // test conversion to F-Droid index
+        let fdroidConverted = appcat.toFDroidIndex(repoURL: "https://appfair.net/f-droid/repo")
+        print(try fdroidConverted.prettyJSON)
+        let fdroid: FDroidIndex = try deserialize(.json) { """
+        {
+          "packages" : {
+            "org.appfair.app.Tune_Out" : {
+              "metadata" : {
+                "added" : 1672574400000,
+                "authorEmail" : "support@tune-out.app",
+                "description" : {
+                  "en-US" : "An internet radio player…",
+                  "fr-FR" : "Une player de radio internet…"
+                },
+                "icon" : {
+                  "en-US" : {
+                    "name" : "icon.png",
+                    "sha256" : "SHA256",
+                    "size" : 123456
+                  }
+                },
+                "issueTracker" : "https://github.com/Tune-Out/Tune-Out/issues",
+                "lastUpdated" : 0,
+                "license" : "GPLv3",
+                "name" : {
+                  "en-US" : "Tune Out"
+                },
+                "summary" : {
+                  "en-US" : "An internet radio player",
+                  "fr-FR" : "Une player de radio internet"
+                },
+                "webSite" : "https://tune-out.app"
+              },
+              "versions" : {
+                "SHA256" : {
+                  "added" : 1767268800000,
+                  "file" : {
+                    "name" : "releases/download/1.1.2/TuneOut-fdroid.apk",
+                    "sha256" : "SHA256",
+                    "size" : 123456
+                  },
+                  "manifest" : {
+                    "usesPermission" : [
+                      {
+                        "name" : "android.permission.WRITE_EXTERNAL_STORAGE"
+                      }
+                    ],
+                    "usesSdk" : {
+                      "minSdkVersion" : 28,
+                      "targetSdkVersion" : 35
+                    },
+                    "versionCode" : 0,
+                    "versionName" : "1.1.2"
+                  }
+                }
+              }
+            }
+          },
+          "repo" : {
+            "address" : "https://appfair.net/f-droid/repo",
+            "icon" : {
+              "en-US" : {
+                "name" : "icons/appfair_icon.png",
+                "sha256" : "SHA256",
+                "size" : 123456
+              }
+            },
+            "name" : {
+              "en-US" : "App Fair",
+              "fr-FR" : "Le App Fair"
+            },
+            "timestamp" : 0
+          }
+        }
+        """ }
+        try XCTAssertEqual(fdroidConverted.prettyJSON, fdroid.prettyJSON)
     }
 
-    func testParseCatalogs() throws {
-        // list obtained from https://cdn.altstore.io/file/altstore/altstore/marketplace-sources.json
-        let dir = ProcessInfo.processInfo.environment["FAIR_EXPO_TESTS_MARKETPLACE_SOURCES_DIR"] ?? "/opt/src/github/altstore/sources/marketplace-sources"
+    func testParseFDroidCatalogs() throws {
+        let dir = ProcessInfo.processInfo.environment["FAIR_EXPO_TESTS_FDROID_INDEX_DIRS"] ?? "/opt/src/github/appfair/misc/fdroid/catalogs"
 
         if !FileManager.default.fileExists(atPath: dir) {
+            throw XCTSkip("No local fdroid .json files for testing")
+        }
+
+        let allFiles = try FileManager.default.enumeratedURLs(of: URL(fileURLWithPath: dir))
+
+        let paths = allFiles
+            .filter({ $0.pathExtension == "json" })
+
+        if paths.isEmpty {
             throw XCTSkip("No local marketplace .json files for testing")
+        }
+
+        for path in paths {
+            print("parsing source at path: \(path.path)")
+            do {
+                let catalog: FDroidIndex = try deserialize(.json, verify: true) { try String(contentsOf: path) }
+                print("successfully parsed: \(path.path): \(catalog.repo.name.values.first ?? "Unnamed") with \(catalog.packages?.count ?? 0) apps")
+            } catch {
+                XCTFail("error parsing \(path.path): \(error)")
+            }
+        }
+    }
+
+    func testParseAltSources() throws {
+        // list obtained from https://cdn.altstore.io/file/altstore/altstore/marketplace-sources.json
+        let dir = ProcessInfo.processInfo.environment["FAIR_EXPO_TESTS_ALTSTORE_SOURCES_DIR"] ?? "/opt/src/github/altstore/sources/marketplace-sources"
+
+        if !FileManager.default.fileExists(atPath: dir) {
+            throw XCTSkip("No local altsource .json files for testing")
         }
 
         let allFiles = try FileManager.default.enumeratedURLs(of: URL(fileURLWithPath: dir))

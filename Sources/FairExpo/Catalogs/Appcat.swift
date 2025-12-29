@@ -1,7 +1,16 @@
+// Copyright (c) 2022 - 2026 The App Fair Project <info@appfair.org>
+// Licensed under the GNU Affero General Public License v3.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import Foundation
 
+/// A catalog that describes an app, including metadata about the application itself,
+/// the platforms for which it is available, and the channels through which the app can be acquired.
+///
 /// Goals:
-/// - Round-trip between: Fastlane metadata files (iOS + Android), F-Droid index-v2.json, altstore.json
+/// - Create from Fastlane metadata files
+/// - Used to generate index pages for apps (e.g., https://appfair.net)
+/// - Embeddable within an app itself to provide useful runtime information (support email, app store links, etc.)
+/// - Exportable to F-Droid `index-v2.json` and AltStore `altsource.json`
 public struct Appcat: Codable, Equatable, Sendable {
     /// A locale key.
     /// E.g., https://docs.fastlane.tools/actions/deliver/#available-language-codes : ar-SA, ca, cs, da, de-DE, el, en-AU, en-CA, en-GB, en-US, es-ES, es-MX, fi, fr-CA, fr-FR, he, hi, hr, hu, id, it, ja, ko, ms, nl-NL, no, pl, pt-BR, pt-PT, ro, ru, sk, sv, th, tr, uk, vi, zh-Hans, zh-Hant
@@ -51,7 +60,7 @@ public struct Appcat: Codable, Equatable, Sendable {
         public var id: String
         /// The date on which the app was first created
         public var created: Date?
-        /// The location of this app's root, either absilute or relative to the catalog's url
+        /// The location of this app's root, either absolute or relative to the catalog's base url
         public var location: String?
         /// The top-level title of the app
         public var title: LocalizedText?
@@ -65,6 +74,18 @@ public struct Appcat: Codable, Equatable, Sendable {
         public var icon: LocalizedImage
         /// A HEX RGB code for the tint for the display of this app (e.g., `A1C2E3`)
         public var tint: String?
+        /// A home page for the app
+        public var homepage: String?
+        /// The name of the author of the app
+        public var author: String?
+        /// A support email for this app
+        public var email: String?
+        /// An issue tracker web page for this app
+        public var issues: String?
+        /// A page for helping with translating this app
+        public var translation: String?
+        /// An SPDX identifier for the app's license
+        public var license: String?
         /// The map of platforms supported by this app
         /// E.g., ios, android, macos, windows, linux
         public var platforms: [String: Platform]
@@ -111,34 +132,37 @@ public struct Appcat: Codable, Equatable, Sendable {
                 /// The screenshots associate which this profile
                 public var screenshots: [LocalizedImage]
             }
-        }
 
-        /// A specific distribution channel for an app (e.g., `appstore`, `playstore`, `fdroid`, `direct`, `homebrew`, `winget`)
-        public struct Channel: Codable, Equatable, Sendable, AppMetadata {
-            /// A semantic version for the latest release
-            public var version: String // e.g., 1.1.2
-            /// A build number or identifier for this app
-            public var build: Int? // e.g., 987654
-            /// An ISO-8601 date when the given version was released
-            public var date: Date // e.g., 2026-01-01T12:00:00Z
-            /// An optional channel-specific idenfier for this artifact, like the iTunes identifier
-            public var identifier: String?
-            /// The artifact download information
-            public var artifact: ResourceRef?
-            /// Channel-specific categories (e.g., for the App Store: https://developer.apple.com/app-store/categories/)
-            public var categories: [String]?
+            /// A specific distribution channel for an app platform (e.g., `appstore`, `playstore`, `fdroid`, `direct`, `homebrew`, `winget`)
+            public struct Channel: Codable, Equatable, Sendable, AppMetadata {
+                /// A semantic version for the latest release
+                public var version: String // e.g., 1.1.2
+                /// A build number or identifier for this app
+                public var build: Int64? // e.g., 987654
+                /// An ISO-8601 date when the given version was released
+                public var date: Date // e.g., 2026-01-01T12:00:00Z
+                /// An optional channel-specific identifier for this artifact, like the iTunes identifier
+                public var identifier: String?
+                /// The artifact download information
+                public var artifact: ResourceRef?
+                /// Channel-specific categories (e.g., for the App Store: https://developer.apple.com/app-store/categories/)
+                public var categories: [String]?
 
-            /// Optional channel-specific title for the app
-            public var title: LocalizedText?
-            /// Optional channel-specific  summary description for the app
-            public var summary: LocalizedText?
-            /// Optional channel-specific full description for the app
-            public var description: LocalizedText?
-            /// Optional channel-specific localized keyword list
-            public var keywords: LocalizedTextArray?
+                /// Optional channel-specific title for the app
+                public var title: LocalizedText?
+                /// Optional channel-specific  summary description for the app
+                public var summary: LocalizedText?
+                /// Optional channel-specific full description for the app
+                public var description: LocalizedText?
+                /// Optional channel-specific localized keyword list
+                public var keywords: LocalizedTextArray?
 
-            /// Optional release notes for this version in this channel
-            public var notes: LocalizedText?
+                /// Arbitrary additional metadata
+                public var metadata: [String: String]?
+
+                /// Optional release notes for this version in this channel
+                public var notes: LocalizedText?
+            }
         }
     }
 
@@ -202,7 +226,6 @@ extension Appcat {
 }
 
 extension Appcat {
-
     public func toAltstoreSource(channelName: String = "altstore") -> AltCatalog {
         var apps: [AltCatalog.App] = []
         for app in self.apps {
@@ -268,7 +291,7 @@ extension Appcat {
                 name: self.localized(in: channel.title ?? app.title) ?? "",
                 bundleIdentifier: platform.id,
                 marketplaceID: channel.identifier,
-                developerName: nil,
+                developerName: app.author,
                 subtitle: self.localized(in: channel.summary ?? app.summary),
                 localizedSubtitles: channel.summary ?? app.summary,
                 localizedDescription: self.localized(in: channel.description ?? app.description),
@@ -287,13 +310,97 @@ extension Appcat {
         return AltCatalog(name: self.localized(in: self.title), subtitle: nil, description: self.localized(in: self.description), iconURL: self.location(relativeTo: self.localized(in: self.icon)?.location), headerURL: nil, website: nil, fediUsername: nil, patreonURL: nil, tintColor: self.tint, featuredApps: nil, apps: apps, news: nil)
     }
 
-//    func toFDroidIndex(repoURL: String) -> FDroidIndex {
-//        var repo = FDroidIndex.Repo(name: <#T##FDroidIndex.LocalizedText#>, icon: <#T##FDroidIndex.LocalizedFile#>, address: repoURL, timestamp: <#T##Int64#>)
-//        var packages = Dictionary<String, FDroidIndex.Package>()
-//        for app in self.apps {
-//            var fdroidApp = FDroidIndex.Package(metadata: <#T##FDroidIndex.Package.Metadata#>, versions: <#T##Dictionary<String, FDroidIndex.Package.PackageVersion>#>)
-//            packages[app.id] = fdroidApp
-//        }
-//        return FDroidIndex(repo: repo, packages: packages)
-//    }
+    public func toFDroidIndex(repoURL: String) -> FDroidIndex {
+        var packages = Dictionary<String, FDroidIndex.Package>()
+        for app in self.apps {
+            guard let platform = app.platforms["android"] else { continue }
+            guard let channel = platform.channels["fdroid"] else { continue }
+            guard let artifact = channel.artifact else { continue }
+            let meta = channel.metadata ?? [:]
+
+            var usesSdk: FDroidIndex.Package.UsesSdk? = nil
+            if let minSdk = platform.minVersion.flatMap({ Int($0) }),
+               let targetSdk = platform.targetVersion.flatMap({ Int($0) }){
+                usesSdk = FDroidIndex.Package.UsesSdk(minSdkVersion: minSdk, targetSdkVersion: targetSdk)
+            }
+
+            let versionManifest = FDroidIndex.Package.Manifest(
+                versionName: channel.version,
+                versionCode: channel.build ?? 0,
+                usesSdk: usesSdk,
+                maxSdkVersion: platform.maxVersion.flatMap({ Int($0) }),
+                signer: nil,
+                usesPermission: platform.permissions?.map({ FDroidIndex.Package.Permission(name: $0.key) }),
+                usesPermissionSdk23: nil,
+                nativecode: nil,
+                features: nil)
+
+            var versions: Dictionary<String, FDroidIndex.Package.PackageVersion> = [:]
+            // TODO: resolve location against specified f-droid `repoURL`
+            let file = FDroidIndex.File(name: artifact.location, sha256: artifact.hash, size: artifact.size)
+
+            // The convention is to index versions by the artifact's hash, but is that the best way for these catalogs?
+            //let versionID = app.id
+            let versionID = artifact.hash
+            versions[versionID] = FDroidIndex.Package.PackageVersion(
+                added: Int64(channel.date.timeIntervalSince1970 * 1_000),
+                file: file,
+                src: nil,
+                manifest: versionManifest,
+                releaseChannels: nil,
+                antiFeatures: nil,
+                whatsNew: channel.notes)
+
+            let screenshots: FDroidIndex.Package.Screenshots? = nil
+
+            let metadata = FDroidIndex.Package.Metadata(
+                name: app.title,
+                summary: app.summary,
+                description: app.description,
+                added: .init((app.created?.timeIntervalSince1970 ?? 0) * 1_000), // seconds to milliseconds
+                lastUpdated: 0,
+                webSite: meta["webSite"] ?? app.homepage,
+                changelog: meta["changelog"],
+                license: meta["license"] ?? app.license,
+                sourceCode: meta["sourceCode"],
+                issueTracker: meta["issueTracker"] ?? app.issues,
+                translation: meta["translation"] ?? app.translation,
+                preferredSigner: meta["preferredSigner"],
+                categories: channel.categories,
+                authorName: meta["authorName"] ?? app.author,
+                authorEmail: meta["authorEmail"] ?? app.email,
+                authorWebSite: meta["authorWebSite"],
+                authorPhone: meta["authorPhone"],
+                donate: meta["donate"].flatMap({ [$0] }),
+                liberapayID: meta["liberapayID"],
+                liberapay: meta["liberapay"],
+                openCollective: meta["openCollective"],
+                bitcoin: meta["bitcoin"],
+                litecoin: meta["litecoin"],
+                flattrID: meta["flattrID"],
+                icon: app.icon.toFDroidLocalizedFile(),
+                featureGraphic: nil,
+                promoGraphic: nil,
+                tvBanner: nil,
+                video: nil,
+                screenshots: screenshots)
+
+            let fdroidApp = FDroidIndex.Package(metadata: metadata, versions: versions)
+            packages[channel.identifier ?? platform.id] = fdroidApp
+        }
+        let repo = FDroidIndex.Repo(
+            name: self.title,
+            icon: icon?.toFDroidLocalizedFile() ?? [:],
+            address: repoURL,
+            timestamp: 0)
+        return FDroidIndex(repo: repo, packages: packages)
+    }
+}
+
+extension Appcat.LocalizedImage {
+    func toFDroidLocalizedFile() -> FDroidIndex.LocalizedFile {
+        self.mapValues({
+            FDroidIndex.File(name: $0.location, sha256: $0.hash, size: $0.size)
+        })
+    }
 }

@@ -1,3 +1,6 @@
+// Copyright (c) 2022 - 2026 The App Fair Project <info@appfair.org>
+// Licensed under the GNU Affero General Public License v3.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import Foundation
 
 /// A collection of metadata described by a fastlane directory structure.

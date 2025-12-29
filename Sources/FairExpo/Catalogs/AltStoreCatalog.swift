@@ -1,3 +1,6 @@
+// Copyright (c) 2022 - 2026 The App Fair Project <info@appfair.org>
+// Licensed under the GNU Affero General Public License v3.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import Swift
 import FairCore
 import Foundation
@@ -147,7 +150,7 @@ public struct AltCatalog: Codable, Equatable {
             /// The maximum iOS version supported by this release (inclusive). AltStore will hide any updates that are not supported by the user's device.
             public var maxOSVersion: String?
 
-            public init(version: String, buildVersion: String? = nil, marketingVersion: String? = nil, date: String, localizedDescription: String? = nil, localizedDescriptions: [String: String]? = nil, downloadURL: String, size: Int64, assetURLs: [String : String]? = nil, minOSVersion: String? = nil, maxOSVersion: String? = nil) {
+            public init(version: String, buildVersion: String? = nil, marketingVersion: String? = nil, date: String, localizedDescription: String? = nil, localizedDescriptions: [String: String]? = nil, downloadURL: String, size: Int64, sha256: String? = nil, assetURLs: [String : String]? = nil, minOSVersion: String? = nil, maxOSVersion: String? = nil) {
                 self.version = version
                 self.buildVersion = buildVersion
                 self.marketingVersion = marketingVersion
@@ -156,6 +159,7 @@ public struct AltCatalog: Codable, Equatable {
                 self.localizedDescriptions = localizedDescriptions
                 self.downloadURL = downloadURL
                 self.size = size
+                self.sha256 = sha256
                 self.assetURLs = assetURLs
                 self.minOSVersion = minOSVersion
                 self.maxOSVersion = maxOSVersion
