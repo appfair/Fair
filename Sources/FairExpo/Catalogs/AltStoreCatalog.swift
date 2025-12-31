@@ -70,11 +70,11 @@ public struct AltCatalog: Codable, Equatable {
         /// A short, one-sentence description of your app that will appear in the Browse tab of AltStore.
         public var subtitle: String?
         /// Undocumented, e.g.: `{ "en": "English subtitle", "fr": "Subtitle en français" }`
-        public var localizedSubtitles: [String: String]?
+        public var localizedSubtitles: StringMap<String>?
         /// A full-length description of your app. This can include any information you believe is relevant for your app, such as feature descriptions or additional links.
         public var localizedDescription: String?
         /// Undocumented, e.g.: `{ "en": "English description", "fr": "Description en français" }`
-        public var localizedDescriptions: [String: String]?
+        public var localizedDescriptions: StringMap<String>?
         /// A link to you app's icon image. It will automatically be masked to an app icon shape.
         public var iconURL: String?
         /// The color used to theme your app's store page. We recommend using your app's existing tint color (if it has one), but you are free to choose any color you want.
@@ -98,10 +98,10 @@ public struct AltCatalog: Codable, Equatable {
 
         /// Screenshots are complicated: they can be either an array of strings, an array of screenshot objects, or a dictionary of strings to an array of screenshot objects
         /// https://faq.altstore.io/developers/make-a-source#universal-apps
-        public typealias ScreenshotCollection = Either<[ScreenshotChoice]>.Or<[String: [ScreenshotChoice]]>
+        public typealias ScreenshotCollection = Either<[ScreenshotChoice]>.Or<StringMap<[ScreenshotChoice]>>
         public typealias ScreenshotChoice = Either<String>.Or<Screenshot>
 
-        public init(name: String, bundleIdentifier: String? = nil, marketplaceID: String? = nil, developerName: String? = nil, subtitle: String? = nil, localizedSubtitles: [String: String]? = nil, localizedDescription: String? = nil, localizedDescriptions: [String: String]? = nil, iconURL: String? = nil, tintColor: String? = nil, category: String? = nil, screenshots: ScreenshotCollection? = nil, versions: [Version]? = nil, appPermissions: AltCatalog.App.Permission? = nil, patreon: PatreonInfo? = nil) {
+        public init(name: String, bundleIdentifier: String? = nil, marketplaceID: String? = nil, developerName: String? = nil, subtitle: String? = nil, localizedSubtitles: StringMap<String>? = nil, localizedDescription: String? = nil, localizedDescriptions: StringMap<String>? = nil, iconURL: String? = nil, tintColor: String? = nil, category: String? = nil, screenshots: ScreenshotCollection? = nil, versions: [Version]? = nil, appPermissions: AltCatalog.App.Permission? = nil, patreon: PatreonInfo? = nil) {
             self.name = name
             self.bundleIdentifier = bundleIdentifier
             self.marketplaceID = marketplaceID
@@ -136,7 +136,7 @@ public struct AltCatalog: Codable, Equatable {
             /// A description of what's new in this version. You can use this to tell users about new features, bug fixes, etc.
             public var localizedDescription: String?
             /// A description of what's new in this version. You can use this to tell users about new features, bug fixes, etc.
-            public var localizedDescriptions: [String: String]?
+            public var localizedDescriptions: StringMap<String>?
             /// AltStore Classic: The URL of the uploaded .ipa file.
             /// AltStore PAL: The URL of the manifest.json in your uploaded ADP, or the root directory of the ADP itself.
             public var downloadURL: String
@@ -144,13 +144,13 @@ public struct AltCatalog: Codable, Equatable {
             public var size: Int64
             public var sha256: String?
             /// If you are unable to preserve an ADP's directory structure as-is, this allows you to manually specify the download URL for individual files in an ADP.  The keys are the names of the files you want to override (minus file extensions) and the values are the URLs where they are hosted.
-            public var assetURLs: [String: String]?
+            public var assetURLs: StringMap<String>?
             /// The minimum iOS version supported by this release. AltStore will hide any updates that are not supported by the user's device.
             public var minOSVersion: String?
             /// The maximum iOS version supported by this release (inclusive). AltStore will hide any updates that are not supported by the user's device.
             public var maxOSVersion: String?
 
-            public init(version: String, buildVersion: String? = nil, marketingVersion: String? = nil, date: String, localizedDescription: String? = nil, localizedDescriptions: [String: String]? = nil, downloadURL: String, size: Int64, sha256: String? = nil, assetURLs: [String : String]? = nil, minOSVersion: String? = nil, maxOSVersion: String? = nil) {
+            public init(version: String, buildVersion: String? = nil, marketingVersion: String? = nil, date: String, localizedDescription: String? = nil, localizedDescriptions: StringMap<String>? = nil, downloadURL: String, size: Int64, sha256: String? = nil, assetURLs: StringMap<String>? = nil, minOSVersion: String? = nil, maxOSVersion: String? = nil) {
                 self.version = version
                 self.buildVersion = buildVersion
                 self.marketingVersion = marketingVersion
@@ -174,7 +174,7 @@ public struct AltCatalog: Codable, Equatable {
 
             /// A dictionary with all the "UsageDescription" keys in your app's Info.plist along with their descriptions. We recommend using the same descriptions already in your Info.plist.
             public var privacy: PermissionPrivacyOption?
-            public typealias PermissionPrivacyOption = Either<[PermissionPrivacy]>.Or<[String: String]>
+            public typealias PermissionPrivacyOption = Either<[PermissionPrivacy]>.Or<StringMap<String>>
 
             public init(entitlements: [PermissionEntitlementElement]? = nil, privacy: PermissionPrivacyOption? = nil) {
                 self.entitlements = entitlements
@@ -295,5 +295,92 @@ public extension AltCatalog {
     /// Parses the `AppCatalog` with the expected parameters (i.e., date encoding as lenient iso8601).
     static func parse(jsonData: Data) throws -> Self {
         try AltCatalog(fromJSON: jsonData, dateDecodingStrategy: .custom(decodeISO8601Date))
+    }
+}
+
+extension Appcat {
+    /// Generates an AltCatalog from this Appcat.
+    public func toAltstoreSource(channelName: String = "altstore") -> AltCatalog {
+        var apps: [AltCatalog.App] = []
+        for app in self.apps {
+            guard let platform = app.platforms["ios"] else { continue }
+            guard let channel = platform.channels[channelName] else { continue }
+            guard let artifact = channel.artifact else { continue }
+
+            let appURL = self.location(relativeTo: app.location)
+
+            /// Returns a full URL relative to the given relative path
+            func appLocation(relativeTo: String?) -> String? {
+                if let relativeTo, let baseURLString = appURL, let baseURL = URL(string: baseURLString) {
+                    return URL(string: relativeTo, relativeTo: baseURL)?.absoluteString ?? relativeTo
+                } else {
+                    return relativeTo // no base URL, so just return the fragment
+                }
+            }
+
+            var entitlements: [AltCatalog.App.Permission.PermissionEntitlement] = []
+            var privacy: [AltCatalog.App.Permission.PermissionPrivacy] = []
+
+            // .init(AltCatalog.App.Permission.PermissionEntitlement(name: "com.apple.developer.networking.background-task.fetch"))
+            // AltCatalog.App.Permission.PermissionPrivacy(name: "Bluetooth", usageDescription: "")
+            for permission in platform.permissions ?? [] {
+                if permission.key.contains(".") { // e.g., com.apple.developer.networking.background-task.fetch
+                    entitlements.append(.init(name: permission.key))
+                } else {
+                    privacy.append(.init(name: permission.key, usageDescription: self.localized(in: permission.reason) ?? ""))
+                }
+            }
+
+            let permissions: AltCatalog.App.Permission? = entitlements.isEmpty && privacy.isEmpty ? nil : AltCatalog.App.Permission(entitlements: entitlements.map({ .init($0) }), privacy: .init(privacy))
+
+            var screenshots: StringMap<[AltCatalog.App.ScreenshotChoice]> = [:]
+            for (profileName, profile) in platform.profiles {
+
+                let shots: [AltCatalog.Screenshot] = (self.localized(in: profile.screenshots) ?? []).map { shot in
+                    AltCatalog.Screenshot(imageURL: appLocation(relativeTo: shot.location) ?? shot.location, width: shot.width, height: shot.height)
+                }
+
+                if !shots.isEmpty {
+                    screenshots[profileName] = shots.map({ .init($0) })
+                }
+            }
+
+            // we assume the category matches one of the AltStore hardwired categories
+            let category = channel.categories?.first ?? "other"
+
+            let altVersion = AltCatalog.App.Version(
+                version: channel.version,
+                buildVersion: channel.build?.description,
+                marketingVersion: nil,
+                date: channel.date.ISO8601Format(),
+                localizedDescription: self.localized(in: channel.notes),
+                localizedDescriptions: channel.notes,
+                downloadURL: appLocation(relativeTo: artifact.location) ?? artifact.location,
+                size: artifact.size,
+                assetURLs: nil,
+                minOSVersion: platform.minVersion,
+                maxOSVersion: platform.maxVersion)
+
+            let altApp = AltCatalog.App(
+                name: self.localized(in: mergeLocalized(channel.title, platform.title, app.title)) ?? "",
+                bundleIdentifier: platform.id,
+                marketplaceID: channel.identifier,
+                developerName: app.author,
+                subtitle: self.localized(in: mergeLocalized(channel.summary, platform.summary, app.summary)),
+                localizedSubtitles: mergeLocalized(channel.summary, platform.summary, app.summary),
+                localizedDescription: self.localized(in: mergeLocalized(channel.description, platform.description, app.description)),
+                localizedDescriptions: mergeLocalized(channel.description, platform.description, app.description),
+                iconURL: appLocation(relativeTo: self.localized(in: app.icon)?.location),
+                tintColor: app.tint,
+                category: category,
+                screenshots: screenshots.isEmpty ? nil : .init(screenshots),
+                versions: [altVersion],
+                appPermissions: permissions,
+                patreon: nil)
+
+            apps.append(altApp)
+        }
+
+        return AltCatalog(name: self.localized(in: self.title), subtitle: nil, description: self.localized(in: self.description), iconURL: self.location(relativeTo: self.localized(in: self.icon)?.location), headerURL: nil, website: nil, fediUsername: nil, patreonURL: nil, tintColor: self.tint, featuredApps: nil, apps: apps, news: nil)
     }
 }

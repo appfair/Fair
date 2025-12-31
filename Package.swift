@@ -13,9 +13,10 @@ let package = Package(
         .executable(name: "fairtool", targets: ["fairtool"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.1.3"),
-        .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
-        .package(url: "https://github.com/marcprux/universal.git", from: "5.0.3"),
+        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.7.0"),
+        .package(url: "https://github.com/apple/swift-crypto.git", from: "4.2.0"),
+        .package(url: "https://github.com/marcprux/universal.git", from: "5.3.0"),
+        .package(url: "https://github.com/jpsim/Yams.git", from: "6.2.0"),
     ],
     targets: [
         .target(name: "CZLib", linkerSettings: [ .linkedLibrary("z") ]),
@@ -25,6 +26,7 @@ let package = Package(
         ], resources: [.process("Resources")], cSettings: [.define("_GNU_SOURCE", to: "1")]),
         .target(name: "FairExpo", dependencies: [
             "FairCore",
+            .product(name: "Yams", package: "Yams"),
             .product(name: "Crypto", package: "swift-crypto", condition: .when(platforms: [.linux])),
         ], resources: [.process("Resources")]),
         .executableTarget(name: "fairtool", dependencies: [

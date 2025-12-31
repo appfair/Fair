@@ -5,6 +5,7 @@ import Swift
 import XCTest
 import FairCore
 import FairExpo
+import Yams
 
 public class FairExpoTests : XCTestCase {
 
@@ -31,207 +32,340 @@ public class FairExpoTests : XCTestCase {
     ///   - yaml: a closure creating the YAML to check
     /// - Returns: the decoded type
     func deserialize<T: Codable>(_ type: ParseType, verify: Bool = true, file: StaticString = #file, line: UInt = #line, _ contents: () throws -> String) throws -> T {
-        let data = try contents().utf8Data
-        let json: JSON
+        let stringContents = try contents()
+        let data = stringContents.utf8Data
         switch type {
-        case .yaml: json = try YAML.parse(data).json()
-        case .json: json = try JSON.parse(data)
-        }
-        let decoded = try T(json: json, options: JSONDecodingOptions(dateDecodingStrategy: .iso8601))
-        let decodedJSON = try decoded.json(options: JSONEncodingOptions(dateEncodingStrategy: .iso8601))
-        if verify {
-            if json != decodedJSON {
-                try XCTAssertEqual(json.prettyJSON, decodedJSON.prettyJSON, "round-trip of encoded type \(T.self) failed", file: file, line: line)
+        case .yaml:
+            let decoder = YAMLDecoder()
+            //decoder.options = YAMLDecoder.Options(encoding: .utf8, aliasDereferencingStrategy: nil)
+            let decoded = try decoder.decode(T.self, from: data)
+            if verify {
+                let encoder = YAMLEncoder()
+                encoder.options.allowUnicode = true
+                let decodedYAML = try encoder.encode(decoded)
+                XCTAssertEqual(stringContents, decodedYAML, "round-trip of encoded YAML type \(T.self) failed", file: file, line: line)
             }
+            return decoded
+        case .json:
+            let json = try JSON.parse(data)
+            let decoded = try T(json: json, options: JSONDecodingOptions(dateDecodingStrategy: .iso8601))
+            let decodedJSON = try decoded.json(options: JSONEncodingOptions(dateEncodingStrategy: .iso8601))
+            if verify {
+                if json != decodedJSON {
+                    try XCTAssertEqual(json.prettyJSON, decodedJSON.prettyJSON, "round-trip of encoded type \(T.self) failed", file: file, line: line)
+                }
+            }
+            return decoded
         }
-        return decoded
     }
 
     enum ParseType {
         case yaml, json
     }
 
-    func testAppcatConversion() async throws {
-        let appcat: Appcat = try deserialize(.yaml) { """
-            appcat-version: 1.0
-            default-locales: ['en-US', 'fr-FR']
-            url: https://demo.appfair.net/appcat.json
-            tint: AABBCC
+    func testAppcatMiniscule() async throws {
+        let yaml = """
+            appcat-version: 1
             title:
-              en-US: "App Fair"
-              fr-FR: "Le App Fair"
+              en-US: App Fair
             description:
-              en-US: "A catalog of apps"
-              fr-FR: "Une cataloge de les apps"
+              en-US: A catalog of apps
             icon:
               en-US:
                 location: icons/appfair_icon.png
-                width: 512
-                height: 512
                 size: 123456
                 hash: SHA256
+                width: 512
+                height: 512
+            apps: []
+            
+            """
+        let appcat: Appcat = try deserialize(.yaml) { yaml }
+        XCTAssertEqual(1, appcat.appcatVersion)
+
+        let json = #"{"appcat-version":1,"apps":[],"description":{"en-US":"A catalog of apps"},"icon":{"en-US":{"hash":"SHA256","height":512,"location":"icons/appfair_icon.png","size":123456,"width":512}},"title":{"en-US":"App Fair"}}"#
+
+        let appcatJSON: Appcat = try deserialize(.json, { json })
+        XCTAssertEqual(appcat, appcatJSON)
+    }
+
+    func testAppcatMinimal() async throws {
+        let appcat: Appcat = try deserialize(.yaml) { """
+            appcat-version: 1
+            title:
+              en-US: App Fair
+            description:
+              en-US: A catalog of apps
+            icon:
+              en-US:
+                location: icons/appfair_icon.png
+                size: 123456
+                hash: SHA256
+                width: 512
+                height: 512
             apps:
-              - id: Tune-Out
-                created: 2023-01-01T12:00:00Z
-                homepage: "https://tune-out.app"
-                email: "support@tune-out.app"
-                issues: "https://github.com/Tune-Out/Tune-Out/issues"
-                # relative path to the assets for this app
-                location: apps/Tune-Out/
-                title:
-                  en-US: "Tune Out"
-                summary:
-                  en-US: "An internet radio player"
-                  fr-FR: "Une player de radio internet"
-                description:
-                  en-US: "An internet radio player…"
-                  fr-FR: "Une player de radio internet…"
-                keywords:
-                  en-US: ['key1', 'key2']
-                  fr-FR: ['cle1', 'cle2']
-                icon:
-                  en-US:
-                    location: icon.png
-                    width: 512
-                    height: 512
-                    size: 123456
-                    hash: SHA256
-                platforms:
-                  ios:
-                    id: org.appfair.app.Tune-Out
-                    minVersion: '17.0'
-                    permissions:
-                      - key: 'NSContactsUsageDescription'
-                        reason:
-                          en-US: "This app needs to access contents"
-                      - key: 'com.apple.developer.contacts.notes'
-                        reason:
-                          en-US: "This app needs to access contacts (entitlement)"
-                    channels:
-                      direct:
-                        version: '1.1.2'
-                        date: 2026-01-01T12:00:00Z
-                        artifact:
-                          location: releases/download/1.1.2/TuneOut-release.ipa
+            - id: Tune-Out
+              title:
+                en-US: Tune Out
+              summary:
+                en-US: An internet radio player
+              description:
+                en-US: An internet radio player…
+              icon:
+                en-US:
+                  location: icon.png
+                  size: 123456
+                  hash: SHA256
+                  width: 512
+                  height: 512
+              platforms:
+                ios:
+                  id: org.appfair.app.Tune-Out
+                  channels:
+                    appstore:
+                      version: 1.1.1
+                      date: 2025-12-01T12:00:00Z
+                      identifier: '987654321'
+                      title:
+                        en-US: Tune Out for iOS
+                      keywords:
+                        en-US:
+                        - ios-key1
+                        - ios-key2
+                  profiles:
+                    iphone:
+                      screenshots:
+                        en-US:
+                        - location: screens/screenshot_iphone1.png
                           size: 123456
                           hash: SHA256
-                      appstore:
-                        identifier: '987654321'
-                        version: '1.1.1'
-                        date: 2025-12-01T12:00:00Z
-                        categories: ['Music', 'Entertainment']
-                        title:
-                          en-US: "Tune Out for iOS"
-                          fr-FR: "Le Tune Out for iOS"
-                        keywords:
-                          en-US: ['ios-key1', 'ios-key2']
-                          fr-FR: ['ios-cle1', 'ios-cle2']
-                      altstore:
-                        version: '1.1.2'
-                        date: 2026-01-01T12:00:00Z
-                        categories: ['entertainment']
-                        notes:
-                          en-US: "Bug fixes and performance improvements"
-                        artifact:
-                          location: releases/download/1.1.2/manifest.json
+                          width: 800
+                          height: 600
+                          caption: A screenshot
+            
+            """ }
+        XCTAssertEqual(1, appcat.appcatVersion)
+    }
+
+    func testAppcatMid() async throws {
+        let appcat: Appcat = try deserialize(.yaml) { """
+            appcat-version: 1
+            title:
+              en-US: App Fair
+            description:
+              en-US: A catalog of apps
+            icon:
+              en-US:
+                location: icons/appfair_icon.png
+                size: 123456
+                hash: SHA256
+                width: 512
+                height: 512
+            apps: []
+            
+            """ }
+        XCTAssertEqual(1, appcat.appcatVersion)
+    }
+
+    func testAppcatConversion() async throws {
+        let appcat: Appcat = try deserialize(.yaml) { """
+            appcat-version: 1
+            default-locales:
+            - en-US
+            - fr-FR
+            title:
+              en-US: App Fair
+              fr-FR: Le App Fair
+            description:
+              en-US: A catalog of apps
+              fr-FR: Une cataloge de les apps
+            icon:
+              en-US:
+                location: icons/appfair_icon.png
+                size: 123456
+                hash: SHA256
+                width: 512
+                height: 512
+            tint: AABBCC
+            url: https://demo.appfair.net/appcat.json
+            apps:
+            - id: Tune-Out
+              created: 2023-01-01T12:00:00Z
+              location: apps/Tune-Out/
+              title:
+                en-US: Tune Out
+              summary:
+                en-US: An internet radio player
+                fr-FR: Une player de radio internet
+              description:
+                en-US: An internet radio player…
+                fr-FR: Une player de radio internet…
+              keywords:
+                en-US:
+                - key1
+                - key2
+                fr-FR:
+                - cle1
+                - cle2
+              icon:
+                en-US:
+                  location: icon.png
+                  size: 123456
+                  hash: SHA256
+                  width: 512
+                  height: 512
+              homepage: https://tune-out.app
+              email: support@tune-out.app
+              issues: https://github.com/Tune-Out/Tune-Out/issues
+              license: GPL-3.0-only
+              platforms:
+                ios:
+                  id: org.appfair.app.Tune-Out
+                  summary:
+                    fr-FR: Une player de radio internet pour iOS
+                  minVersion: '17.0'
+                  channels:
+                    direct:
+                      version: 1.1.2
+                      date: 2026-01-01T12:00:00Z
+                      artifact:
+                        location: releases/download/1.1.2/TuneOut-release.ipa
+                        size: 123456
+                        hash: SHA256
+                    appstore:
+                      version: 1.1.1
+                      date: 2025-12-01T12:00:00Z
+                      identifier: '987654321'
+                      categories:
+                      - Music
+                      - Entertainment
+                      title:
+                        en-US: Tune Out for iOS
+                        fr-FR: Le Tune Out for iOS
+                      keywords:
+                        en-US:
+                        - ios-key1
+                        - ios-key2
+                        fr-FR:
+                        - ios-cle1
+                        - ios-cle2
+                    altstore:
+                      version: 1.1.2
+                      date: 2026-01-01T12:00:00Z
+                      artifact:
+                        location: releases/download/1.1.2/manifest.json
+                        size: 123456
+                        hash: SHA256
+                      categories:
+                      - entertainment
+                      summary:
+                        en-US: An internet radio player for AltStore
+                      notes:
+                        en-US: Bug fixes and performance improvements
+                  profiles:
+                    iphone:
+                      screenshots:
+                        en-US:
+                        - location: screens/screenshot_iphone1.png
                           size: 123456
                           hash: SHA256
-                    profiles:
-                      iphone:
-                        screenshots:
-                          - en-US:
-                              caption: "A screenshot"
-                              width: 800
-                              height: 600
-                              location: screens/screenshot_iphone1.png
-                              size: 123456
-                              hash: SHA256
-                      ipad:
-                        screenshots:
-                          - fr-FR:
-                              caption: "Une screenshot"
-                              location: screens/screenshot_ipad1.png
-                              width: 800
-                              height: 1024
-                              size: 123456
-                              hash: SHA256
-                      watch:
-                        screenshots:
-                          - fr-FR:
-                              caption: "Une screenshot Watch"
-                              location: screens/screenshot_watch1.png
-                              width: 400
-                              height: 400
-                              size: 123456
-                              hash: SHA256
-                  android:
-                    id: org.appfair.app.Tune_Out
-                    minVersion: '28'
-                    targetVersion: '35'
-                    permissions:
-                      - key: android.permission.WRITE_EXTERNAL_STORAGE
-                        reason:
-                          en-US: 'This app needs to write to external storage'
-                    channels:
-                      direct:
-                        version: '1.1.2'
-                        build: 112
-                        date: 2026-01-01T12:00:00Z
-                        artifact:
-                          location: releases/download/1.1.2/TuneOut-release.apk
+                          width: 800
+                          height: 600
+                          caption: A screenshot
+                    ipad:
+                      screenshots:
+                        fr-FR:
+                        - location: screens/screenshot_ipad1.png
                           size: 123456
                           hash: SHA256
-                      fdroid:
-                        version: '1.1.2'
-                        date: 2026-01-01T12:00:00Z
-                        description:
-                          ar: "هذا الوصف الخاص بتطبيق F-Droid"
-                          en-US: "This special F-Droid description for the app…"
-                          ja-JA: "このアプリの特別なF-Droid説明文…"
-                        metadata:
-                          license: GPLv3
-                        artifact:
-                          location: releases/download/1.1.2/TuneOut-fdroid.apk
+                          width: 800
+                          height: 1024
+                          caption: Une screenshot
+                    watch:
+                      screenshots:
+                        fr-FR:
+                        - location: screens/screenshot_watch1.png
                           size: 123456
                           hash: SHA256
-                      playstore:
-                        version: '1.1.1'
-                        date: 2025-12-01T12:00:00Z
-                        identifier: '987654321'
-                        description:
-                          en-US: "This special Play Store description for the app…"
-                    profiles:
-                      phone:
-                        screenshots:
-                          - en-US:
-                              location: screens/screenshot_android_phone1_en.png
-                              size: 123456
-                              hash: SHA256
-                              caption: "A screenshot"
-                              width: 800
-                              height: 600
-                            fr-FR:
-                              location: screens/screenshot_android_phone1_fr.png
-                              size: 123456
-                              hash: SHA256
-                              caption: "Une screenshot"
-                              width: 800
-                              height: 600
-                          - en-US:
-                              location: screens/screenshot_android_phone2_en.png
-                              size: 123456
-                              hash: SHA256
-                              caption: "Another screenshot"
-                              width: 800
-                              height: 600
-                      tv:
-                        screenshots:
-                          - en-US:
-                              location: screens/screenshot_android_tv1.png
-                              width: 800
-                              height: 1024
-                              size: 123456
-                              hash: SHA256
+                          width: 400
+                          height: 400
+                          caption: Une screenshot Watch
+                  permissions:
+                  - key: NSContactsUsageDescription
+                    reason:
+                      en-US: This app needs to access contents
+                  - key: com.apple.developer.contacts.notes
+                    reason:
+                      en-US: This app needs to access contacts (entitlement)
+                android:
+                  id: org.appfair.app.Tune_Out
+                  minVersion: '28'
+                  targetVersion: '35'
+                  channels:
+                    direct:
+                      version: 1.1.2
+                      build: 112
+                      date: 2026-01-01T12:00:00Z
+                      artifact:
+                        location: releases/download/1.1.2/TuneOut-release.apk
+                        size: 123456
+                        hash: SHA256
+                    playstore:
+                      version: 1.1.1
+                      build: 111
+                      date: 2025-12-01T12:00:00Z
+                      identifier: '987654321'
+                      description:
+                        en-US: This special Play Store description for the app…
+                    fdroid:
+                      version: 1.1.2
+                      build: 112
+                      date: 2026-01-01T12:00:00Z
+                      artifact:
+                        location: releases/download/1.1.2/TuneOut-fdroid.apk
+                        size: 123456
+                        hash: SHA256
+                      description:
+                        en-US: This special F-Droid description for the app…
+                        ja-JA: このアプリの特別なF-Droid説明文…
+                        ar: هذا الوصف الخاص بتطبيق F-Droid
+                      metadata:
+                        authorWebSite: https://mysite.org
+                  profiles:
+                    phone:
+                      screenshots:
+                        en-US:
+                        - location: screens/screenshot_android_phone1_en.png
+                          size: 123456
+                          hash: SHA256
+                          width: 800
+                          height: 600
+                          caption: A screenshot
+                        - location: screens/screenshot_android_phone2_en.png
+                          size: 123456
+                          hash: SHA256
+                          width: 800
+                          height: 600
+                          caption: Another screenshot
+                        fr-FR:
+                        - location: screens/screenshot_android_phone1_fr.png
+                          size: 123456
+                          hash: SHA256
+                          width: 800
+                          height: 600
+                          caption: Une screenshot
+                    tv:
+                      screenshots:
+                        en-US:
+                        - location: screens/screenshot_android_tv1.png
+                          size: 123456
+                          hash: SHA256
+                          width: 800
+                          height: 1024
+                  permissions:
+                  - key: android.permission.WRITE_EXTERNAL_STORAGE
+                    reason:
+                      en-US: This app needs to write to external storage
 
             """ }
 
@@ -245,11 +379,11 @@ public class FairExpoTests : XCTestCase {
         XCTAssertEqual("An internet radio player", app.summary?["en-US"])
         XCTAssertEqual("Une player de radio internet", app.summary?["fr-FR"])
 
-        XCTAssertEqual(["android", "ios"], app.platforms.keys.sorted())
-        XCTAssertEqual(["altstore", "appstore", "direct"], app.platforms["ios"]?.channels.keys.sorted())
-        XCTAssertEqual(["ipad", "iphone", "watch"], app.platforms["ios"]?.profiles.keys.sorted())
-        XCTAssertEqual(["direct", "fdroid", "playstore"], app.platforms["android"]?.channels.keys.sorted())
-        XCTAssertEqual(["phone", "tv"], app.platforms["android"]?.profiles.keys.sorted())
+        XCTAssertEqual(["ios", "android"], app.platforms.keys)
+        XCTAssertEqual(["direct", "appstore", "altstore"], app.platforms["ios"]?.channels.keys)
+        XCTAssertEqual(["iphone", "ipad", "watch"], app.platforms["ios"]?.profiles.keys)
+        XCTAssertEqual(["direct", "playstore", "fdroid"], app.platforms["android"]?.channels.keys)
+        XCTAssertEqual(["phone", "tv"], app.platforms["android"]?.profiles.keys)
 
         // test conversion to AltStore source
         let altstoreConverted = appcat.toAltstoreSource()
@@ -264,10 +398,10 @@ public class FairExpoTests : XCTestCase {
               "bundleIdentifier" : "org.appfair.app.Tune-Out",
               "name" : "Tune Out",
               "category" : "entertainment",
-              "subtitle" : "An internet radio player",
+              "subtitle" : "An internet radio player for AltStore",
               "localizedSubtitles" : {
-                "en-US" : "An internet radio player",
-                "fr-FR" : "Une player de radio internet"
+                "en-US" : "An internet radio player for AltStore",
+                "fr-FR" : "Une player de radio internet pour iOS"
               },
               "localizedDescription" : "An internet radio player…",
               "localizedDescriptions" : {
@@ -334,7 +468,7 @@ public class FairExpoTests : XCTestCase {
 
         // test conversion to F-Droid index
         let fdroidConverted = appcat.toFDroidIndex(repoURL: "https://appfair.net/f-droid/repo")
-        print(try fdroidConverted.prettyJSON)
+
         let fdroid: FDroidIndex = try deserialize(.json) { """
         {
           "packages" : {
@@ -342,9 +476,12 @@ public class FairExpoTests : XCTestCase {
               "metadata" : {
                 "added" : 1672574400000,
                 "authorEmail" : "support@tune-out.app",
+                "authorWebSite" : "https://mysite.org",
                 "description" : {
-                  "en-US" : "An internet radio player…",
-                  "fr-FR" : "Une player de radio internet…"
+                  "ar" : "هذا الوصف الخاص بتطبيق F-Droid",
+                  "en-US" : "This special F-Droid description for the app…",
+                  "fr-FR" : "Une player de radio internet…",
+                  "ja-JA" : "このアプリの特別なF-Droid説明文…"
                 },
                 "icon" : {
                   "en-US" : {
@@ -355,9 +492,41 @@ public class FairExpoTests : XCTestCase {
                 },
                 "issueTracker" : "https://github.com/Tune-Out/Tune-Out/issues",
                 "lastUpdated" : 0,
-                "license" : "GPLv3",
+                "license" : "GPL-3.0-only",
                 "name" : {
                   "en-US" : "Tune Out"
+                },
+                "screenshots" : {
+                  "phone" : {
+                    "en-US" : [
+                      {
+                        "name" : "screens/screenshot_android_phone1_en.png",
+                        "sha256" : "SHA256",
+                        "size" : 123456
+                      },
+                      {
+                        "name" : "screens/screenshot_android_phone2_en.png",
+                        "sha256" : "SHA256",
+                        "size" : 123456
+                      }
+                    ],
+                    "fr-FR" : [
+                      {
+                        "name" : "screens/screenshot_android_phone1_fr.png",
+                        "sha256" : "SHA256",
+                        "size" : 123456
+                      }
+                    ]
+                  },
+                  "tv" : {
+                    "en-US" : [
+                      {
+                        "name" : "screens/screenshot_android_tv1.png",
+                        "sha256" : "SHA256",
+                        "size" : 123456
+                      }
+                    ]
+                  }
                 },
                 "summary" : {
                   "en-US" : "An internet radio player",
@@ -383,7 +552,7 @@ public class FairExpoTests : XCTestCase {
                       "minSdkVersion" : 28,
                       "targetSdkVersion" : 35
                     },
-                    "versionCode" : 0,
+                    "versionCode" : 112,
                     "versionName" : "1.1.2"
                   }
                 }
@@ -516,5 +685,4 @@ public class FairExpoTests : XCTestCase {
             """, env.contents)
         }
     }
-
 }

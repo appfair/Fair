@@ -30,13 +30,13 @@ public struct FDroidIndex: Codable, Equatable {
     public var repo: Repo
 
     /// The list of packages (i.e., apps) that make up the catalog
-    public var packages: Dictionary<String, Package>?
+    public var packages: StringMap<Package>?
 
     /// A map of language code to the translated text. E.g.: `["en-US": "Name", "fr-FR": "Nom"]`
-    public typealias LocalizedText = Dictionary<String, String>
+    public typealias LocalizedText = StringMap<String>
 
     /// A map of language code to the file resource. E.g.: `["en-US": "images/icon/english.svg", "fr-FR": "images/icon/french.svg"]`
-    public typealias LocalizedFile = Dictionary<String, File>
+    public typealias LocalizedFile = StringMap<File>
 
     /// A map of language code to a file resource set.
     ///
@@ -52,9 +52,9 @@ public struct FDroidIndex: Codable, Equatable {
     /// ]
     /// ```
     ///
-    public typealias LocalizedFileList = Dictionary<String, Array<File>>
+    public typealias LocalizedFileList = StringMap<Array<File>>
 
-    public init(repo: Repo, packages: Dictionary<String, Package>?) {
+    public init(repo: Repo, packages: StringMap<Package>?) {
         self.repo = repo
         self.packages = packages
     }
@@ -83,12 +83,12 @@ public struct FDroidIndex: Codable, Equatable {
         public var description: LocalizedText?
         public var mirrors: Array<Mirror>?
         public var timestamp: Int64
-        public var antiFeatures: Dictionary<String, AntiFeature>?
+        public var antiFeatures: StringMap<AntiFeature>?
         /// A mapping of the category name of metadata about the category
-        public var categories: Dictionary<String, Category>?
-        public var releaseChannels: Dictionary<String, ReleaseChannel>?
+        public var categories: StringMap<Category>?
+        public var releaseChannels: StringMap<ReleaseChannel>?
 
-        public init(name: LocalizedText, icon: LocalizedFile, address: String, webBaseUrl: String? = nil, description: LocalizedText? = nil, mirrors: Array<Mirror>? = nil, timestamp: Int64, antiFeatures: Dictionary<String, AntiFeature>? = nil, categories: Dictionary<String, Category>? = nil, releaseChannels: Dictionary<String, ReleaseChannel>? = nil) {
+        public init(name: LocalizedText, icon: LocalizedFile, address: String, webBaseUrl: String? = nil, description: LocalizedText? = nil, mirrors: Array<Mirror>? = nil, timestamp: Int64, antiFeatures: StringMap<AntiFeature>? = nil, categories: StringMap<Category>? = nil, releaseChannels: StringMap<ReleaseChannel>? = nil) {
             self.name = name
             self.icon = icon
             self.address = address
@@ -156,9 +156,9 @@ public struct FDroidIndex: Codable, Equatable {
     public struct Package: Codable, Equatable {
         public var metadata: Metadata
         /// A of versions, keyed by the sha256 of the primary artifact.
-        public var versions: Dictionary<String, PackageVersion>
+        public var versions: StringMap<PackageVersion>
 
-        public init(metadata: Metadata, versions: Dictionary<String, PackageVersion>) {
+        public init(metadata: Metadata, versions: StringMap<PackageVersion>) {
             self.metadata = metadata
             self.versions = versions
         }
@@ -238,7 +238,7 @@ public struct FDroidIndex: Codable, Equatable {
             }
         }
 
-        public typealias Screenshots = [String: LocalizedFileList]
+        public typealias Screenshots = StringMap<LocalizedFileList>
 
         public struct PackageVersion: Codable, Equatable {
             public var added: Int64
@@ -246,10 +246,10 @@ public struct FDroidIndex: Codable, Equatable {
             public var src: File?
             public var manifest: Manifest
             public var releaseChannels: Array<String>?
-            public var antiFeatures: Dictionary<String, LocalizedText>?
+            public var antiFeatures: StringMap<LocalizedText>?
             public var whatsNew: LocalizedText?
 
-            public init(added: Int64, file: File, src: File? = nil, manifest: Manifest, releaseChannels: Array<String>? = nil, antiFeatures: Dictionary<String, LocalizedText>? = nil, whatsNew: LocalizedText? = nil) {
+            public init(added: Int64, file: File, src: File? = nil, manifest: Manifest, releaseChannels: Array<String>? = nil, antiFeatures: StringMap<LocalizedText>? = nil, whatsNew: LocalizedText? = nil) {
                 self.added = added
                 self.file = file
                 self.src = src
@@ -324,3 +324,106 @@ public struct FDroidIndex: Codable, Equatable {
     }
 }
 
+extension Appcat {
+    /// Generates an F-Droid Index from this Appcat.
+    public func toFDroidIndex(repoURL: String) -> FDroidIndex {
+        var packages = StringMap<FDroidIndex.Package>()
+        for app in self.apps {
+            guard let platform = app.platforms["android"] else { continue }
+            guard let channel = platform.channels["fdroid"] else { continue }
+            guard let artifact = channel.artifact else { continue }
+            let meta = channel.metadata ?? [:]
+
+            var usesSdk: FDroidIndex.Package.UsesSdk? = nil
+            if let minSdk = platform.minVersion.flatMap({ Int($0) }),
+               let targetSdk = platform.targetVersion.flatMap({ Int($0) }){
+                usesSdk = FDroidIndex.Package.UsesSdk(minSdkVersion: minSdk, targetSdkVersion: targetSdk)
+            }
+
+            let versionManifest = FDroidIndex.Package.Manifest(
+                versionName: channel.version,
+                versionCode: channel.build ?? 0,
+                usesSdk: usesSdk,
+                maxSdkVersion: platform.maxVersion.flatMap({ Int($0) }),
+                signer: nil,
+                usesPermission: platform.permissions?.map({ FDroidIndex.Package.Permission(name: $0.key) }),
+                usesPermissionSdk23: nil,
+                nativecode: nil,
+                features: nil)
+
+            var versions: StringMap<FDroidIndex.Package.PackageVersion> = [:]
+            // TODO: resolve location against specified f-droid `repoURL`
+            let file = FDroidIndex.File(name: artifact.location, sha256: artifact.hash, size: artifact.size)
+
+            // The convention is to index versions by the artifact's hash, but is that the best way for these catalogs?
+            //let versionID = app.id
+            let versionID = artifact.hash
+            versions[versionID] = FDroidIndex.Package.PackageVersion(
+                added: Int64(channel.date.timeIntervalSince1970 * 1_000),
+                file: file,
+                src: nil,
+                manifest: versionManifest,
+                releaseChannels: nil,
+                antiFeatures: nil,
+                whatsNew: channel.notes)
+
+            let screenshots: FDroidIndex.Package.Screenshots = platform.profiles.mapValues({ profile in
+                let files: FDroidIndex.LocalizedFileList = profile.screenshots.mapValues({ $0.map({ $0.toFDroidFile() }) })
+                return files
+            })
+
+            let metadata = FDroidIndex.Package.Metadata(
+                name: mergeLocalized(channel.title, platform.title, app.title),
+                summary: mergeLocalized(channel.summary, platform.summary, app.summary),
+                description: mergeLocalized(channel.description, platform.description, app.description),
+                added: .init((app.created?.timeIntervalSince1970 ?? 0) * 1_000), // seconds to milliseconds
+                lastUpdated: 0,
+                webSite: meta["webSite"] ?? app.homepage,
+                changelog: meta["changelog"],
+                license: meta["license"] ?? app.license,
+                sourceCode: meta["sourceCode"],
+                issueTracker: meta["issueTracker"] ?? app.issues,
+                translation: meta["translation"] ?? app.translation,
+                preferredSigner: meta["preferredSigner"],
+                categories: channel.categories,
+                authorName: meta["authorName"] ?? app.author,
+                authorEmail: meta["authorEmail"] ?? app.email,
+                authorWebSite: meta["authorWebSite"],
+                authorPhone: meta["authorPhone"],
+                donate: meta["donate"].flatMap({ [$0] }),
+                liberapayID: meta["liberapayID"],
+                liberapay: meta["liberapay"],
+                openCollective: meta["openCollective"],
+                bitcoin: meta["bitcoin"],
+                litecoin: meta["litecoin"],
+                flattrID: meta["flattrID"],
+                icon: app.icon.toFDroidLocalizedFile(),
+                featureGraphic: nil,
+                promoGraphic: nil,
+                tvBanner: nil,
+                video: nil,
+                screenshots: screenshots.isEmpty ? nil : screenshots)
+
+            let fdroidApp = FDroidIndex.Package(metadata: metadata, versions: versions)
+            packages[channel.identifier ?? platform.id] = fdroidApp
+        }
+        let repo = FDroidIndex.Repo(
+            name: self.title,
+            icon: icon?.toFDroidLocalizedFile() ?? [:],
+            address: repoURL,
+            timestamp: 0)
+        return FDroidIndex(repo: repo, packages: packages)
+    }
+}
+
+extension Appcat.LocalizedImage {
+    func toFDroidLocalizedFile() -> FDroidIndex.LocalizedFile {
+        self.mapValues({ $0.toFDroidFile() })
+    }
+}
+
+extension Appcat.ImageResourceRef {
+    func toFDroidFile() -> FDroidIndex.File {
+        FDroidIndex.File(name: self.location, sha256: self.hash, size: self.size)
+    }
+}

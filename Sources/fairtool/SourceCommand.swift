@@ -75,7 +75,7 @@ public struct SourceCommand : AsyncParsableCommand {
             }
 
 
-            var packages: Dictionary<String, FDroidIndex.Package> = [:]
+            var packages: StringMap<FDroidIndex.Package> = [:]
             for (appid, package) in packageList {
                 packages[appid] = package
             }
@@ -354,7 +354,7 @@ public struct SourceCommand : AsyncParsableCommand {
             }
 
             // build the mapping from delta/variant asset to the flattened form stored at the GitHub release
-            var assetURLs: [String: String]? = nil
+            var assetURLs: StringMap<String>? = nil
 
             if generateAssetURLs {
                 assetURLs = [:]

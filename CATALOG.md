@@ -40,7 +40,6 @@ parse category from Info.plist and map it into https://faq.altstore.io/developer
 
 developer, entertainment, games, lifestyle, other, photo-video, social, utilities
 
-
 ### Google Play Store
 
 "Example categories""
