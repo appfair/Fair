@@ -20,7 +20,11 @@ public typealias StringMap<T> = OrderedMap<String, T>
 /// - Exportable to F-Droid `index-v2.json` and AltStore `altsource.json`
 public struct Appcat: Codable, Equatable, Sendable {
     /// A locale key.
-    /// E.g., https://docs.fastlane.tools/actions/deliver/#available-language-codes : ar-SA, ca, cs, da, de-DE, el, en-AU, en-CA, en-GB, en-US, es-ES, es-MX, fi, fr-CA, fr-FR, he, hi, hr, hu, id, it, ja, ko, ms, nl-NL, no, pl, pt-BR, pt-PT, ro, ru, sk, sv, th, tr, uk, vi, zh-Hans, zh-Hant
+    /// App Store locales: https://developer.apple.com/documentation/appstoreconnectapi/managing-metadata-in-your-app-by-using-locale-shortcodes (https://docs.fastlane.tools/actions/deliver/#available-language-codes ):
+    /// `ar-SA, ca, cs, da, de-DE, el, en-AU, en-CA, en-GB, en-US, es-ES, es-MX, fi, fr-CA, fr-FR, he, hi, hr, hu, id, it, ja, ko, ms, nl-NL, no, pl, pt-BR, pt-PT, ro, ru, sk, sv, th, tr, uk, vi, zh-Hans, zh-Hant`
+    ///
+    /// Play Store locales: https://github.com/ashutoshgngwr/validate-fastlane-supply-metadata/blob/c8857fdbbd3e00f9a5cbe8604bcecfa95ce8fef8/play_store_locales.go#L40 :
+    /// `af, sq, am, ar, hy-AM, az-AZ, bn-BD, eu-ES, be, bg, my-MM, ca, zh-HK, zh-CN, zh-TW, hr, cs-CZ, da-DK, nl-NL, en-AU, en-CA, en-GB, en-IN, en-SG, en-US, en-ZA, et, fil, fi-FI, fr-CA, fr-FR, gl-ES, ka-GE, de-DE, el-GR, gu, iw-IL, hi-IN, hu-HU, is-IS, id, it-IT, ja-JP, kn-IN, kk, km-KH, ko-KR, ky-KG, lo-LA, lv, lt, mk-MK, ms-MY, ms, ml-IN, mr-IN, mn-MN, ne-NP, no-NO, fa, fa-AE, fa-AF, fa-IR, pl-PL, pt-BR, pt-PT, pa, ro, rm, ru-RU, sr, si-LK, sk, sl, es-419, es-ES, es-US, sw, sv-SE, ta-IN, te-IN, th, tr-TR, uk, ur, vi, zu`
     public typealias LocalizationKey = String
     public typealias LocalizedDictionary<T> = StringMap<T>
     public typealias LocalizedText = LocalizedDictionary<String>
@@ -257,5 +261,14 @@ extension Appcat {
             }
         }
         return dict.isEmpty ? nil : dict
+    }
+}
+
+extension Appcat.App {
+    public func toYAML() throws -> String {
+        let encoder = YAMLEncoder()
+        encoder.options.allowUnicode = true
+        let yamlOutput = try encoder.encode(self)
+        return yamlOutput
     }
 }

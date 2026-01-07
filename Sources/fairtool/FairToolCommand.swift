@@ -25,7 +25,8 @@ public struct FairToolCommand : AsyncParsableCommand {
         version: Bundle.fairCoreVersion?.versionString ?? "unknown",
         shouldDisplay: !experimental,
         subcommands: [
-            AppCommand.self,
+            //AppCommand.self,
+            AppcatCommand.self,
             TranslateCommand.self,
             FairCommand.self,
             ArtifactCommand.self,

@@ -21,6 +21,7 @@ extension SemVer : ExpressibleByArgument {
 }
 
 
+@available(*, deprecated, message: "no longer used")
 public struct AppCommand : AsyncParsableCommand {
     public static let experimental = true
     public static var configuration = CommandConfiguration(commandName: "app",
